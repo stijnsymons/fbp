@@ -1,0 +1,38 @@
+[ABOUT]
+
+FBP is a little mashup i made for 2 reasons:
+
+(1) to learn some more HTML/CSS/JS/node.js/couchDB/boilerplate, instead 
+    of just watching the presentations online
+(2) because i'm too lazy to browse FB all day, playing a movie someone 
+    posted and going back for the next song. Can't be doing that during
+    office hours ;)
+
+So please don't stalk me with feature request/deadlines/etc we're building
+a house, raising an 11 months old attention-craving son and all "normal"
+day activities. This a little pet-project when TV is boring and i can't 
+sleep.
+
+[TODO]
+
+SHORT TERM
+
+- make playlist linked list instead of shifting elements from the array
+- playlist navigation
+- add "previous" button
+- caption avatar click == goto page
+- playlist nick == see only that person's movies in the playlist
+- "boss-mode" hide actual player, make SFW view
+
+LONG TERM
+
+- backend for storing
+	- last played to determine the time interval of the playlist (newest, 
+	  all, ...)
+	- kick / follow users
+	- append "public pages" to watchlist (eg. radioakapelle)
+- vimeo integration
+- soundcloud integration
+- twitter integration (anyone posting music clips on it??)
+- filter non-music movies
+- buy a real domainname
