@@ -1,0 +1,87 @@
+body {
+	color: #111111;
+	font:12px/1.5 "Lucida Grande",Arial,sans-serif;
+	margin: 0px;
+}
+/**
+ * HEADER 
+ **/
+#header {
+	height: 100px; 
+	background-color: #354242; 
+	color: white;
+	margin-bottom: 10px;
+}
+#header #title {
+	float:left;
+}
+#header #userMenu {
+	float:right;
+}
+#header #userInfo {
+	float:right;
+	margin-left:5px;
+}
+/**
+ * CONTENT
+ **/
+#content {
+	width: 980px;
+	margin: 0 auto;
+}
+.left {
+	float: left;
+	width: 480px;
+}
+.right {
+	float: right;
+	width: 490px;
+}
+/**
+ * PLAYLIST
+ **/
+#list {
+	list-style: none outside none;
+	padding: 10px;
+	margin: 0px;
+}
+.list_from {
+	margin: 0 5px 0 10px;
+	-moz-border-radius:5px 5px 5px 5px;
+	background:none repeat scroll 0 0 #C9DE55;
+	color:#FFFFFF;
+	font-weight:bold;
+	margin-right:5px;
+	padding:1px 5px;
+}
+.list_name {
+	margin: 0 5px 0 10px;
+}
+/**
+ * PLAYER
+ **/
+#player {
+	display:block;
+}
+#caption {
+	margin-top: 10px;
+}
+#caption img {
+	float: left;
+	margin: 0 10px;
+}
+#caption #from {
+	font-weight: bold;
+}
+#caption #message {
+	font-style: italic;
+	background-color: #7D9100;
+	color: #FFFF9D;
+	padding: 5px;
+}
+/**
+ * CONTROLS
+ **/
+#controls {
+	background-color: #354242;
+}
