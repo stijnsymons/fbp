@@ -105,12 +105,14 @@
 	FBP.prototype.list = function() {
 		var list = new Element('ul', {'id': 'list'});
 		this.playlist.each(function(item){
-			var lia = new Element('a', {'id': 'item_'+item.id+'_a'});
+			var lia = new Element('a', {'id': 'item_'+item.id+'_a', href: "#"}).observe('click', function(){
+				this.seek(item);
+			}.bind(this.that));
 			var li = new Element('li', {'id': 'item_'+item.id}).insert(lia);
 			lia.insert(new Element('span', {'id': 'item_'+item.id+'_from', 'class': 'list_from'}).insert(item.from.name));
 			lia.insert(new Element('span', {'id': 'item_'+item.id+'_name', 'class': 'list_name'}).insert(item.name));
-			this.insert(li);
-		}.bind(list));
+			this.list.insert(li);
+		}.bind({list: list, that: this}));
 		this.config.placeholders.list.insert(list);
 		return this;
 	};
@@ -133,6 +135,15 @@
 		caption.insert(new Element('div', {'id':'name'}).insert(item.name));
 		caption.insert(new Element('div', {'id':'message'}).insert(item.message));
 		this.config.placeholders.caption.update(caption);
+		return this;
+	};
+
+	FBP.prototype.seek = function(obj){
+		if (obj.type==='video' && obj.source.indexOf('youtube')>=0) {
+			this.updateCaption(obj);
+			this.player.loadVideoById(obj.link.split('v=')[1]);
+			this.player.playVideo();
+		}
 		return this;
 	};
 
