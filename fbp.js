@@ -5,6 +5,7 @@
 		this.connector = connector;
 		this.playlist  = false;
 		this.player    = false;
+		this.current   = false;
 		return this;
 	}
 	
@@ -16,14 +17,10 @@
 		if (conn.type === 'FB') {
 			FB.init({ apiKey: conn.apiKey});
 			FB.getLoginStatus(this.handleFBSessionResponse.bind(this));
-			
-			config.user.login.observe('click', function() {
-				this.login();
-			}.bind(conn));
 
-			config.user.logout.observe('click', function() {
-				this.logout();
-			}.bind(conn));
+			// user controls
+			config.user.login.observe('click', function() {this.login();}.bind(conn));
+			config.user.logout.observe('click', function() {this.logout();}.bind(conn));
 			
 			conn.login = function() {
 				FB.login(this.handleFBSessionResponse, {perms:'read_stream'});
@@ -37,9 +34,8 @@
 		}
 		
 		// controls
-		config.controls.forward.observe('click', function() {
-			this.forward();
-		}.bind(this));
+		config.controls.forward.observe('click', function() {this.forward();}.bind(this));
+		config.controls.previous.observe('click', function() {this.previous();}.bind(this));
 		
 		return this;
 	};
@@ -56,19 +52,21 @@
 
 		// we have a session
 		FB.api('/me', function(response){
-			console.log(response);
-			var userInfo = this.config.user.info;
-			userInfo.update(new Element('img', {'src': 'https://graph.facebook.com/'+response.id+'/picture'}));
-			userInfo.insert(response.name);
+			this.config.user.avatar.update(new Element('img', {'src': 'https://graph.facebook.com/'+response.id+'/picture'}));
+			this.config.user.name.update(response.name);
 		}.bind(this));
 
 		FB.api('/me/home?q=youtube.com&since=' + this.since(), function(response){
 			if (response.data && response.data.length > 0) {
-				response.data.each(function(item){
+				response.data.each(function(item, index){
 					if (item.type==='video' && item.source.indexOf('youtube')>=0) {
-						this.push(item);
+						item.linkedList = {
+							_previous: (index-1 > 0) ? this.data[index-1] : false,
+							_forward: (index+1 < this.max) ? this.data[index+1] : false
+						};
+						this.youtubies.push(item);
 					}
-				}.bind(youtubies));
+				}.bind({youtubies: youtubies, data: response.data, max: response.data.length}));
 				this.set(youtubies);
 				this.prep();
 			}
@@ -91,71 +89,74 @@
 	};
 	
 	FBP.prototype.prep = function() {
-		if (this.playlist && this.playlist.length > 0) {
-			swfobject.embedSWF("http://www.youtube.com/v/" + this.playlist[0].link.split('v=')[1] + "&enablejsapi=1&playerapiid=player", 
-				'player', "480", "295", "8", null, null, 
-				{allowScriptAccess: "always"}, 
-				{id: "player"}
-			);
-			this.list();
-		}
+		this.current = this.playlist[0];
+		swfobject.embedSWF("http://www.youtube.com/v/" + this.current.link.split('v=')[1] + "&enablejsapi=1&playerapiid=player", 
+			'player', "480", "295", "8", null, null, 
+			{allowScriptAccess: "always"}, 
+			{id: "player"}
+		);
+		this.list();
 		return this;
 	};
 	
 	FBP.prototype.list = function() {
-		var list = new Element('ul', {'id': 'list'});
-		this.playlist.each(function(item){
-			var lia = new Element('a', {'id': 'item_'+item.id+'_a', href: "#"}).observe('click', function(){
-				this.seek(item);
-			}.bind(this.that));
-			var li = new Element('li', {'id': 'item_'+item.id}).insert(lia);
-			lia.insert(new Element('span', {'id': 'item_'+item.id+'_from', 'class': 'list_from'}).insert(item.from.name));
-			lia.insert(new Element('span', {'id': 'item_'+item.id+'_name', 'class': 'list_name'}).insert(item.name));
-			this.list.insert(li);
-		}.bind({list: list, that: this}));
+		var list = new Element('ul', {'id': 'list'}).observe('click', function(evt){
+			var el = evt.findElement('a'),
+				index = el.id.split('_')[1];
+			this.seek(this.playlist[index]);
+		}.bind(this));
+		this.playlist.each(function(item,index){
+			// var lia = new Element('a', {'id': 'item_'+item.id+'_a', href: "#"}).observe('click', function(){
+			// 	this.seek(item);
+			// }.bind(this.that));
+			var lia = new Element('a', {'id': 'item_'+index+'_a', href: "#"});
+			var li  = new Element('li', {'id': 'item_'+index}).insert(lia);
+			lia.insert(new Element('span', {'id': 'item_'+index+'_from', 'class': 'list_from'}).insert(item.from.name));
+			lia.insert(new Element('span', {'id': 'item_'+index+'_name', 'class': 'list_name'}).insert(item.name));
+			this.insert(li);
+		}.bind(list));
 		this.config.placeholders.list.insert(list);
 		return this;
 	};
-	
+
 	FBP.prototype.play = function() {
 		// shift the first one, we've used it for starting YT
-		var item = this.playlist.shift(),
-			player = this.player;
-		this.updateCaption(item);
+		var player = this.player;
+		this.updateCaption();
 		player.addEventListener("onStateChange", 'youtubePlayerStateChange');
 		player.playVideo();	// play the first video
 		return this;
 	};
 
-	FBP.prototype.updateCaption = function(item) {
+	FBP.prototype.updateCaption = function() {
 		var caption = new Element('div', {'id': 'caption'});
-		caption.insert(new Element('img', {'id':'avatar', 'src': 'https://graph.facebook.com/'+item.from.id+'/picture'}));
-		caption.insert(new Element('div', {'id':'from'}).insert(item.from.name));
-		caption.insert(new Element('div', {'id':'dateadd'}).insert(item.create_time));
-		caption.insert(new Element('div', {'id':'name'}).insert(item.name));
-		caption.insert(new Element('div', {'id':'message'}).insert(item.message));
+		caption.insert(new Element('img', {'id':'avatar', 'src': 'https://graph.facebook.com/'+this.current.from.id+'/picture'}));
+		caption.insert(new Element('div', {'id':'from'}).insert(this.current.from.name));
+		caption.insert(new Element('div', {'id':'dateadd'}).insert(this.current.create_time));
+		caption.insert(new Element('div', {'id':'name'}).insert(this.current.name));
+		caption.insert(new Element('div', {'id':'message'}).insert(this.current.message));
 		this.config.placeholders.caption.update(caption);
 		return this;
 	};
 
 	FBP.prototype.seek = function(obj){
-		if (obj.type==='video' && obj.source.indexOf('youtube')>=0) {
-			this.updateCaption(obj);
-			this.player.loadVideoById(obj.link.split('v=')[1]);
-			this.player.playVideo();
-		}
+		this.current = obj;
+		this.updateCaption();
+		this.player.loadVideoById(obj.link.split('v=')[1]);
+		this.player.playVideo();
 		return this;
 	};
 
 	FBP.prototype.forward = function() {
-		var item = this.playlist.shift();
-		this.updateCaption(item);
-		this.player.loadVideoById(item.link.split('v=')[1]);
-		return this;
+		return this.seek(this.current.linkedList._forward);
+	};
+
+	FBP.prototype.previous = function() {
+		return this.seek(this.current.linkedList._previous);
 	};
 
 	var fbp = new FBP(config, connector).init();
-	
+	console.log(fbp);	//@todo: remove this
 
 	window.youtubePlayerStateChange = function(state) {
 		if (state === 0) {
@@ -170,12 +171,14 @@
 
 })({
 	controls:{
-		forward: $('controlsForward')
+		forward: $('controlsForward'),
+		previous: $('controlsPrevious')
 	}, 
 	user: {
 		login: $('userLogin'), 
 		logout: $('userLogout'), 
-		info: $('userInfo')
+		avatar: $('userAvatar'),
+		name: $('userName')
 	},
 	placeholders: {
 		list: $('placeholderList'),

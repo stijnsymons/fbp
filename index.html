@@ -2,7 +2,7 @@
 <html>
 	<head>
 		<meta http-equiv="content-type" content="text/html; charset=utf-8">
-		<title>FBP</title>
+		<title>fbp</title>
 		<link rel="stylesheet" href="fbp.css">
 		<script src="http://ajax.googleapis.com/ajax/libs/prototype/1.6.1.0/prototype.js"></script>
 		<script src="http://ajax.googleapis.com/ajax/libs/swfobject/2.2/swfobject.js"></script>
@@ -11,11 +11,14 @@
 
 	<body>
 		<div id="header">
-			<div id="title">FBP</div>
-			<div id="userMenu">
-				<button id="userLogin">Login</button>
-				<button id="userLogout">Logout</button>
-				<div id="userInfo"></div>
+			<div id="headerBox">
+				<div id="title">fbp</div>
+				<div style="float:right;">
+					<a id="userLogin" href="#" class="medium button">Login</a>
+					<a id="userLogout" href="#" class="medium button">Logout</a>
+					<span id="userAvatar"></span>
+					<span id="userName"></span>
+				</div>
 			</div>
 		</div>
 
@@ -23,7 +26,8 @@
 			<div class="left">
 				<div id="player"></div>
 				<div id="controls">
-					<button id="controlsForward">Forward</button>
+					<a id="controlsPrevious" class="medium button">Previous</a>
+					<a id="controlsForward" class="medium button">Forward</a>
 				</div>
 				<div id="placeholderCaption"></div>
 			</div>
