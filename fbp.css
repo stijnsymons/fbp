@@ -12,6 +12,11 @@ body {
 	color: white;
 	margin-bottom: 10px;
 }
+#header #title {
+	font-family: Georgia;
+	font-size: 23px;
+	font-style: italic;
+}
 #headerBox {
 	width:980px;
 	margin: 0 auto;
@@ -22,9 +27,10 @@ body {
 #header #userMenu {
 	float:right;
 }
-#header #userInfo {
-	float:right;
-	margin-left:5px;
+#header #userName {
+	font-family: Georgia;
+	font-size: 12px;
+	font-style: italic;
 }
 #header img {
 	background-color: #fff;
@@ -124,4 +130,12 @@ body {
  **/
 #controls {
 	background-color: #354242;
+}
+
+/**
+ * EXTRAS
+ **/
+.noentry input {
+	font-style: italic;
+	color: #DDD;
 }
