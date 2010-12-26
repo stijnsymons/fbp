@@ -81,7 +81,7 @@
 				value.isMusic = true;
 				this.data.set(key, value);
 				
-				$(key).insert(new Element('span').update('&#9835;'));
+				$(key).insert(new Element('span').update(new Element('a', {'href':'#', 'class': 'isMusic'}).update('&#9835;')));
 			}
 		}
 		
@@ -186,24 +186,37 @@
 		}.bind(this)));
 	};
 	
-	FBP.prototype.updateInterfaceList = function(uid) {
+	FBP.prototype.updateInterfaceList = function(config) {
 		var list, li;
-		console.log('updating interface playlist uid' + uid);
+		console.log('updating interface playlist');
 		
 		if (!this.listNode) {
 			this.listNode = new Element('ul', {id: 'listNode'}).hide().observe('click', function(evt){
 				var el,index;
 				el = evt.findElement('a');
 				if (el) {
-					if (el.hasClassName('track'))
-					{
+					if (el.hasClassName('track')) {
 						this.seek(parseInt(el.name,10));
+					}
+					else if (el.hasClassName('isMusic')) {
+						this.updateInterfaceList({type: 'onlyMusic'});
+						if (!$('seeAllVideos')) {
+							this.content.insert(
+								new Element('a', {'id':'seeAllVideos','class': 'button'}).update('See All Videos').observe('click', function(){
+									$('seeAllVideos').remove();
+									this.updateInterfaceList();
+								}.bind(this)));
+						}
 					}
 					else if (el.hasClassName('user')) {
 						console.log('loading for user ' + el.name);
-						this.updateInterfaceList(el.name);
+						this.updateInterfaceList({type: 'uid', 'value': el.name});
 						if (!$('seeAllControl')) {
-							this.content.insert(new Element('a', {'id':'seeAllControl','class': 'button'}).update('See All').observe('click', function(){$('seeAllControl').remove();this.updateInterfaceList();}.bind(this)));
+							this.content.insert(
+								new Element('a', {'id':'seeAllControl','class': 'button'}).update('All Friends').observe('click', function(){
+									$('seeAllControl').remove();
+									this.updateInterfaceList();
+								}.bind(this)));
 						}
 					}
 					// evt.stop();
@@ -228,6 +241,12 @@
 				uid = el.value.uid,
 				blocklist = this.blocklist.pluck('uid');
 
+			console.log(this.config);
+
+			if (this.config && this.config.type === 'onlyMusic' && !el.value.isMusic) {
+				return false;
+			}
+
 			uid = uid.select(function(u){
 				return !blocklist.include(u);
 			});
@@ -236,7 +255,7 @@
 				isBlocked = true;
 			}
 			
-			if (this.uid && !uid.include(this.uid)) {
+			if (this.config && this.config.type === 'uid' && !uid.include(this.config.value)) {
 				return false;
 			}
 			
@@ -245,15 +264,15 @@
 				el.value.data.each(function(el){
 					this.insert(new Element('a', {'href':'#', 'class': 'list_from user', 'name': el.from.id}).update(el.from.name));
 				}.bind(li));
-				if (el.isMusic) {
-					li.insert(new Element('span').update(new Element('a', {'href':'#'}).update('&#9835;')));
+				if (el.value.isMusic) {
+					li.insert(new Element('span').update(new Element('a', {'href':'#', 'class': 'isMusic'}).update('&#9835;')));
 				}
 				this.listNode.insert(li);
 				this.list.add(el.value);
 			}
 			
 			return true;
-		}.bind({listNode: this.listNode, list: this.list, blocklist:this.blocklist, uid: uid}));
+		}.bind({listNode: this.listNode, list: this.list, blocklist:this.blocklist, config: config}));
 		
 		// show it
 		this.listNode.show();
