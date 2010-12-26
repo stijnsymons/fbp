@@ -4,7 +4,6 @@
 		this.apiKey = config.apiKey;
 		this.FB = config.FB;
 		this.loadState = [];
-		this.list = new DoublyLinkedList();
 		this.data = {};
 		this.header = config.header;
 		this.content = config.content;
@@ -12,6 +11,7 @@
 		this.footer = config.footer;
 		this.since = '-2%20weeks';
 		this.current = 0;
+		this.blocklist = [{uid:582789594, nick:'Bart Becks'},{uid:123, nick: 'bla'}];	// block bb
 		return this;
 	};
 
@@ -35,8 +35,12 @@
 		
 		document.observe('fbp:loadingcomplete', function(){
 			console.log('loadingcomplete');
+			this.updateInterfaceList();
 			this.updateInterfaceControls();
 			this.play();
+			
+			// check if it's music or not
+			this.requestIsMusic();
 		}.bind(this));
 		
 		// check the state >> through private events
@@ -44,6 +48,47 @@
 
 		this.checkLoginStatus();
 		
+		return this;
+	};
+	
+	FBP.prototype.requestIsMusic = function(id) {
+		// http://gdata.youtube.com/feeds/api/videos/9jIwvQkBUt4?v=2&alt=json-in-script&callback=fbp.appendIsMusic&key=AI39si5Px-2l8kW5gZbCHrqMwwG5qywE5qlelDBZsZ9T5i9N9KITHcIjYCB9Un7nlWPzCRDu7wdlpYAzZcURhzFFCohBBu7H2g
+		var script;
+		
+		if (id) {
+			console.log('checking for [' + id + ']');
+			script = new Element('script', {src: 'http://gdata.youtube.com/feeds/api/videos/'+id+'?v=2&alt=json-in-script&callback=fbp.appendIsMusic&key=AI39si5Px-2l8kW5gZbCHrqMwwG5qywE5qlelDBZsZ9T5i9N9KITHcIjYCB9Un7nlWPzCRDu7wdlpYAzZcURhzFFCohBBu7H2g', async: 'true'});
+			document.getElementsByTagName('head')[0].appendChild(script);
+		} else {
+			this.data.each(function(el){
+				this.requestIsMusic(el.value.id);
+			}.bind(this));
+		}
+		return this;
+	};
+	
+	FBP.prototype.appendIsMusic = function(root) {
+		var cat, key, value;
+
+		if (root && root.entry) {
+			cat = root.entry['media$group']['media$category'].find(function(el) {
+				return el.scheme === 'http://gdata.youtube.com/schemas/2007/categories.cat';
+			});
+			if (cat['$t'] === 'Music') {
+				key = 'youtube_' + root.entry['media$group']['yt$videoid']['$t'];
+				console.log('found music on YouTube for ['+key+']');
+				value = this.data.get(key);
+				value.isMusic = true;
+				this.data.set(key, value);
+				
+				$(key).insert(new Element('span').update('&#9835;'));
+			}
+		}
+		
+		return this;
+	};
+	
+	FBP.prototype.isMusic = function() {
 		return this;
 	};
 	
@@ -124,9 +169,6 @@
 		if (this.loadState.indexOf(type) < 0) {
 			this.loadState.push(type);
 			
-			// update interface
-			this.updateInterfaceList();
-			
 			if (this.loadState.length >= 2) {
 				// fire event to trigger that all loading is done
 				this.content.fire('fbp:loadingcomplete');
@@ -144,39 +186,74 @@
 		}.bind(this)));
 	};
 	
-	FBP.prototype.updateInterfaceList = function() {
+	FBP.prototype.updateInterfaceList = function(uid) {
 		var list, li;
-		console.log('updating interface playlist');
+		console.log('updating interface playlist uid' + uid);
 		
 		if (!this.listNode) {
 			this.listNode = new Element('ul', {id: 'listNode'}).hide().observe('click', function(evt){
 				var el,index;
 				el = evt.findElement('a');
-				index = el.name;
-				
-				this.seek(index);
-				evt.stop();
+				if (el) {
+					if (el.hasClassName('track'))
+					{
+						this.seek(parseInt(el.name,10));
+					}
+					else if (el.hasClassName('user')) {
+						console.log('loading for user ' + el.name);
+						this.updateInterfaceList(el.name);
+						if (!$('seeAllControl')) {
+							this.content.insert(new Element('a', {'id':'seeAllControl','class': 'button'}).update('See All').observe('click', function(){$('seeAllControl').remove();this.updateInterfaceList();}.bind(this)));
+						}
+					}
+					// evt.stop();
+				}
 			}.bind(this));
 			this.content.insert(this.listNode);
 		}
 		else {
 			this.listNode.hide();
+			this.listNode.update();
 		}
 		
 		// load updated list
 		list = this.data.sortBy(function(el){
-			// get a proper timestamp from this
 			return el.created;
 		});
 		
-		list.each(function(el,index){
-			li = new Element('li').update(new Element('a',{'href':'#','name': index}).update(el.value.data[0].name));
-			el.value.data.each(function(el){
-				this.insert(new Element('span', {'class': 'list_from'}).update(el.from.name));
-			}.bind(li));
-			this.listNode.insert(li);
-			this.list.add(el.value);
-		}.bind({listNode: this.listNode, list: this.list}));
+		this.list = new DoublyLinkedList();
+		
+		list.each(function(el,index) {
+			var isBlocked = false,
+				uid = el.value.uid,
+				blocklist = this.blocklist.pluck('uid');
+
+			uid = uid.select(function(u){
+				return !blocklist.include(u);
+			});
+			
+			if (uid.length <= 0) {
+				isBlocked = true;
+			}
+			
+			if (this.uid && !uid.include(this.uid)) {
+				return false;
+			}
+			
+			if (isBlocked === false) {
+				li = new Element('li', {'id': 'youtube_' + el.value.id}).update(new Element('a',{'href':'#','name': index, 'class': 'track'}).update(el.value.data[0].name));
+				el.value.data.each(function(el){
+					this.insert(new Element('a', {'href':'#', 'class': 'list_from user', 'name': el.from.id}).update(el.from.name));
+				}.bind(li));
+				if (el.isMusic) {
+					li.insert(new Element('span').update(new Element('a', {'href':'#'}).update('&#9835;')));
+				}
+				this.listNode.insert(li);
+				this.list.add(el.value);
+			}
+			
+			return true;
+		}.bind({listNode: this.listNode, list: this.list, blocklist:this.blocklist, uid: uid}));
 		
 		// show it
 		this.listNode.show();
@@ -199,20 +276,23 @@
 	};
 	
 	FBP.prototype.forward = function(){
-		this.current++;
-		this.seek(this.current);
-		return this;
+		return this.seek(this.current+1);
 	};
 	
 	FBP.prototype.previous = function(){
-		this.current--;
-		this.seek(this.current);
-		return this;
+		return this.seek(this.current-1);
 	};
 	
 	FBP.prototype.seek = function(index) {
-		this.player.loadVideoById(this.list.item(index).id);
-		this.player.playVideo();
+		if (index >= 0 && index < this.list.size()) {
+			console.log('seeking for ' + index + ' currently at ' + this.current);
+			this.current = index;
+			this.player.loadVideoById(this.list.item(index).id);
+			this.player.playVideo();
+		}
+		else {
+			console.log('outside of list');
+		}
 		return this;
 	};
 	
@@ -239,6 +319,9 @@
 							// console.log(this.data);
 							this.data['youtube_'+this.key]['data'].push(item);
 							this.data['youtube_'+this.key]['count'] = this.data['youtube_'+this.key]['data'].length;
+							if (!this.data['youtube_'+this.key]['uid'].include(item.from.id)) {
+								this.data['youtube_'+this.key]['uid'].push(item.from.id);
+							}
 						}
 						else {
 							created = item.created_time.split('T');
@@ -247,6 +330,7 @@
 							this.data['youtube_'+this.key] = {
 								type: 'youtube',
 								id: this.key,
+								uid: [item.from.id],
 								created: new Date(date[0], date[1], date[2], time[0], time[1], time[2]),
 								count: 1,
 								data: [item]
