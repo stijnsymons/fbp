@@ -3,6 +3,7 @@ body {
 	font:12px/1.5 "Lucida Grande",Arial,sans-serif;
 	margin: 0px;
 }
+
 /**
  * HEADER 
  **/
@@ -83,7 +84,7 @@ body {
 /**
  * PLAYLIST
  **/
-#list {
+#list ul {
 	list-style: none outside none;
 	padding: 10px;
 	margin: 0px;

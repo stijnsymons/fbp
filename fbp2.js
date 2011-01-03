@@ -5,14 +5,15 @@
 		this.FB = config.FB;
 		this.loadState = [];
 		this.data = {};
-		this.header = config.header;
-		this.content = config.content;
 		this.player = config.player;
 		this.footer = config.footer;
-		this.since = '-2%20weeks';
 		this.current = 0;
 		this.blocklist = [{uid:582789594, nick:'Bart Becks'},{uid:123, nick: 'bla'}];	// block bb
 		return this;
+	};
+	
+	FBP.prototype.appendToBlocklist = function(uid, nick) {
+		// if (!this.blocklist())
 	};
 
 	FBP.prototype.init = function() {
@@ -20,8 +21,8 @@
 		document.observe('fbp:loggedin', function(){
 			console.log('fbp:loggedin caught');
 			// this.getStoredList();
-			this.updateHomeList();
-			this.updateGroupList();
+			this.updateHomeData();
+			// this.updateGroupData();
 		}.bind(this));
 		
 		document.observe('fbp:listloaded', function(evt){
@@ -81,7 +82,8 @@
 				value.isMusic = true;
 				this.data.set(key, value);
 				
-				$(key).insert(new Element('span').update(new Element('a', {'href':'#', 'class': 'isMusic'}).update('&#9835;')));
+				
+				$(key).down('a').insert({before: new Element('span', {'class': 'music'}).update(new Element('a', {'href':'#'}).update('&#9835;'))});
 			}
 		}
 		
@@ -107,7 +109,7 @@
 				return true;
 			}
 		}
-		this.content.fire('fbp:listloaded', {type: 'storedlist'});
+		document.fire('fbp:listloaded', {type: 'storedlist'});
 		return false;
 	};
 	
@@ -132,7 +134,7 @@
 
 		if (!response.session) {
 			//no session, set login button
-			this.header.update(new Element('div', {'class': 'button'}).update('Login').observe('click', function(){
+			$('header').update(new Element('a', {'href': '#', 'class': 'nav right'}).update('Login').observe('click', function(){
 				this.FB.login(this.handleLogin.bind(this), {perms:'read_stream'});
 			}.bind(this)));
 
@@ -142,16 +144,18 @@
 		// check FB
 		FB.api('/me', function(response){
 			// remember user
+			var header = $('header');
+			
 			this.userResponse = response;
-			this.header.update(new Element('img', {'src': 'https://graph.facebook.com/'+response.id+'/picture'}));
-			this.header.insert(new Element('span').update(response.name));
-			this.header.insert(new Element('div', {'class': 'button'}).update('Logout').observe('click', function(){
+			header.update(new Element('img', {'src': 'https://graph.facebook.com/'+response.id+'/picture', 'class': 'left'}));
+			header.insert(new Element('span', {'class': 'nav left'}).update(response.name));
+			header.insert(new Element('a', {'href': '#', 'class': 'nav right'}).update('Logout').observe('click', function(){
 				this.FB.logout();
-				this.header.update(new Element('div', {'class': 'button'}).update('Login').observe('click', function(){
+				$('header').update(new Element('a', {'href': '#', 'class': 'nav right'}).update('Login').observe('click', function(){
 					this.FB.login(this.handleLogin.bind(this), {perms:'read_stream'});
 				}.bind(this)));
 			}.bind(this)));
-			this.header.fire('fbp:loggedin');
+			document.fire('fbp:loggedin');
 		}.bind(this));
 		
 		return this;
@@ -169,20 +173,29 @@
 		if (this.loadState.indexOf(type) < 0) {
 			this.loadState.push(type);
 			
-			if (this.loadState.length >= 2) {
+			if (this.loadState.length >= 1) {
 				// fire event to trigger that all loading is done
-				this.content.fire('fbp:loadingcomplete');
+				document.fire('fbp:loadingcomplete');
 			}
 		}
 		return this;
 	};
 	
 	FBP.prototype.updateInterfaceControls = function() {
-		this.content.insert(new Element('a', {'class': 'button'}).update('previous').observe('click', function(){
+		$('controls').insert(new Element('a', {'class': 'button'}).update('|<<').observe('click', function(){
 			this.previous();
 		}.bind(this)));
-		this.content.insert(new Element('a', {'class': 'button'}).update('forward').observe('click', function(){
+		$('controls').insert(new Element('a', {'class': 'button'}).update('>').observe('click', function(){
+			this.player.playVideo();
+		}.bind(this)));
+		$('controls').insert(new Element('a', {'class': 'button'}).update('||').observe('click', function(){
+			this.player.pauseVideo();
+		}.bind(this)));
+		$('controls').insert(new Element('a', {'class': 'button'}).update('>>|').observe('click', function(){
 			this.forward();
+		}.bind(this)));
+		$('controls').insert(new Element('a', {'id': 'toggleVideo', 'class': 'button red'}).update('[x]').observe('click', function(){
+			this.showVideo();
 		}.bind(this)));
 	};
 	
@@ -198,10 +211,10 @@
 					if (el.hasClassName('track')) {
 						this.seek(parseInt(el.name,10));
 					}
-					else if (el.hasClassName('isMusic')) {
+					else if (el.up('span').hasClassName('music')) {
 						this.updateInterfaceList({type: 'onlyMusic'});
 						if (!$('seeAllVideos')) {
-							this.content.insert(
+							$('controls').insert(
 								new Element('a', {'id':'seeAllVideos','class': 'button'}).update('See All Videos').observe('click', function(){
 									$('seeAllVideos').remove();
 									this.updateInterfaceList();
@@ -212,7 +225,7 @@
 						console.log('loading for user ' + el.name);
 						this.updateInterfaceList({type: 'uid', 'value': el.name});
 						if (!$('seeAllControl')) {
-							this.content.insert(
+							$('controls').insert(
 								new Element('a', {'id':'seeAllControl','class': 'button'}).update('All Friends').observe('click', function(){
 									$('seeAllControl').remove();
 									this.updateInterfaceList();
@@ -222,7 +235,7 @@
 					// evt.stop();
 				}
 			}.bind(this));
-			this.content.insert(this.listNode);
+			$('list').insert(this.listNode);
 		}
 		else {
 			this.listNode.hide();
@@ -240,8 +253,6 @@
 			var isBlocked = false,
 				uid = el.value.uid,
 				blocklist = this.blocklist.pluck('uid');
-
-			console.log(this.config);
 
 			if (this.config && this.config.type === 'onlyMusic' && !el.value.isMusic) {
 				return false;
@@ -262,10 +273,10 @@
 			if (isBlocked === false) {
 				li = new Element('li', {'id': 'youtube_' + el.value.id}).update(new Element('a',{'href':'#','name': index, 'class': 'track'}).update(el.value.data[0].name));
 				el.value.data.each(function(el){
-					this.insert(new Element('a', {'href':'#', 'class': 'list_from user', 'name': el.from.id}).update(el.from.name));
+					this.insert(new Element('a', {'href':'#', 'class': 'label', 'name': el.from.id}).update(el.from.name));
 				}.bind(li));
 				if (el.value.isMusic) {
-					li.insert(new Element('span').update(new Element('a', {'href':'#', 'class': 'isMusic'}).update('&#9835;')));
+					li.down('a').insert({before: new Element('span', {'class': 'music'}).update(new Element('a', {'href':'#'}).update('&#9835;'))});
 				}
 				this.listNode.insert(li);
 				this.list.add(el.value);
@@ -280,17 +291,14 @@
 	};
 	
 	FBP.prototype.play = function(){
-		this.player.hide();
-		
 		swfobject.embedSWF(
 			'http://www.youtube.com/v/' + this.list.item(this.current).id + '&enablejsapi=1&playerapiid=player', 
-			'player', '480', '295', '8', null, null, 
+			'player', '300', '185', '8', null, null, 
 			{allowScriptAccess: 'always'},
 			{id: 'player'}
 		);
 		
-		this.player.show();
-		
+		this.updateCaption();
 		return this;
 	};
 	
@@ -308,6 +316,7 @@
 			this.current = index;
 			this.player.loadVideoById(this.list.item(index).id);
 			this.player.playVideo();
+			this.updateCaption();
 		}
 		else {
 			console.log('outside of list');
@@ -315,18 +324,45 @@
 		return this;
 	};
 	
-	FBP.prototype.updateHomeList = function() {
-		return this.updateList('/me/home?q=youtube.com&since=' + this.since, 'homelist');
+	FBP.prototype.updateCaption = function() {
+		var dataArray = this.list.item(this.current).data,
+			caption = $('caption');
+		
+		caption.update();
+		
+		dataArray.each(function(el){
+			var captionItem = new Element('div', {'class': 'captionItem'}),
+				wrapper = new Element('div', {'class': 'wrapper left'});
+			captionItem.insert(new Element('div', {'class': 'left'}).update(new Element('img', {'src': 'https://graph.facebook.com/'+el.from.id+'/picture'})));
+			
+			wrapper.insert(new Element('div', {'class': 'name'}).insert(el.from.name));
+			if (el.name) {
+				wrapper.insert(new Element('div', {'class': 'description'}).insert(el.name));
+			}
+			if (el.description && el.name !== el.description) {
+				wrapper.insert(new Element('div', {'class': 'description'}).insert(el.description));
+			}
+			this.insert(captionItem.insert(wrapper));
+		}.bind(caption));
+		return this;
+	};
+	
+	FBP.prototype.updateHomeData = function() {
+		return this.updateData('/me/home?q=youtube.com&limit=50', 'homelist');
 	};
 
-	FBP.prototype.updateGroupList = function() {
-		return this.updateList('/116486325080867/feed', 'grouplist');
+	FBP.prototype.updateGroupData = function() {
+		return this.updateData('/116486325080867/feed', 'grouplist');
 	};
 
-	FBP.prototype.updateList = function(url, loadedEventName) {
+	FBP.prototype.updateData = function(url, loadedEventName) {
 		var data = {};
 		
+		console.log('requesting url ['+url+']');
+		
 		this.FB.api(url, function(response) {
+			console.log('response data');
+			console.log(response);
 			if (response.data && response.data.length > 0) {
 				var key;
 				response.data.each(function(item, index) {
@@ -334,8 +370,6 @@
 					if (item.link && item.type === 'video' && item.source.indexOf('youtube') >= 0) {
 						this.key = item.link.split('v=')[1].split('&')[0];
 						if (this.data['youtube_'+this.key]) {
-							// found a duplicate
-							// console.log(this.data);
 							this.data['youtube_'+this.key]['data'].push(item);
 							this.data['youtube_'+this.key]['count'] = this.data['youtube_'+this.key]['data'].length;
 							if (!this.data['youtube_'+this.key]['uid'].include(item.from.id)) {
@@ -359,7 +393,7 @@
 				}.bind({data: data, key: key}));
 				
 				this.that.appendData(data);
-				this.that.content.fire('fbp:listloaded', {type: this.loadedEventName});
+				document.fire('fbp:listloaded', {type: this.loadedEventName});
 			}
 		}.bind({that: this, loadedEventName: loadedEventName}));
 		
@@ -368,6 +402,28 @@
 	
 	FBP.prototype.checkLoginStatus = function() {
 		this.FB.getLoginStatus(this.handleLogin.bind(this));
+		return this;
+	};
+	
+	FBP.prototype.hideVideo = function() {
+		var button = $('toggleVideo');
+		this.player.setStyle({'visibility': 'hidden', 'height': '0px'});
+		if (toggleVideo) {
+			button.observe('click', function(){
+				this.showVideo();
+			}.bind(this));
+		}
+		return this;
+	};
+	
+	FBP.prototype.showVideo = function() {
+		var button = $('toggleVideo');
+		this.player.setStyle({'visibility': 'visible', 'height': '185px'});
+		if (toggleVideo) {
+			button.observe('click', function(){
+				this.hideVideo();
+			}.bind(this));
+		}
 		return this;
 	};
 	
@@ -385,7 +441,8 @@
 		this.player = $(playerId);
 		this.player.addEventListener('onStateChange', 'youtubePlayerStateChange');
 		this.player.playVideo();
+		this.hideVideo();
 	}.bind(fbp);
 	
 
-})({apiKey: 'a887094ee69e067634556ed01a864cc4', FB: window.FB, header: $('header'), content: $('content'), footer: $('footer'), player: $('player')}, window);
+})({apiKey: 'a887094ee69e067634556ed01a864cc4', FB: window.FB, footer: $('footer'), player: $('player')}, window);
