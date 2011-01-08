@@ -5,15 +5,17 @@
 		this.FB = config.FB;
 		this.loadState = [];
 		this.groups = [
-			175011152513929,	// klub moustache
-			116486325080867,		// radio kapelle
-			116486325080865
+			{uid: 175011152513929, 'name': 'Klub Moustache'},
+			{uid: 116486325080867, 'name': 'Radio Kapelle'},
+			{uid: 116486325080865, 'name': 'unknown'}
 		];
 		this.data = {};
 		this.player = config.player;
-		this.footer = config.footer;
 		this.current = 0;
-		this.blocklist = [{uid:582789594, nick:'Bart Becks'},{uid:123, nick: 'bla'}];	// block bb
+		this.blocklist = [
+			{uid:582789594, nick:'Bart Becks'},		// block bb
+			{uid:123, nick: 'bla'}];				// testing for booboo's
+			
 		this.offset = 0;
 		return this;
 	};
@@ -80,7 +82,7 @@
 	};
 	
 	FBP.prototype.appendIsMusic = function(root) {
-		var cat, key, value;
+		var cat, key, value, link;
 
 		if (root && root.entry) {
 			cat = root.entry['media$group']['media$category'].find(function(el) {
@@ -93,8 +95,13 @@
 				value.isMusic = true;
 				this.data.set(key, value);
 				
-				
-				$(key).down('a').insert({before: new Element('span', {'class': 'music'}).update(new Element('a', {'href':'#'}).update('&#9835;'))});
+				link = $(key);
+				if (link) {
+					link = link.down('a');
+					if (link) {
+						link.insert({before: new Element('span', {'class': 'music'}).update(new Element('a', {'href':'#'}).update('&#9835;'))});
+					}
+				}
 			}
 		}
 		
@@ -162,7 +169,7 @@
 			header.insert(new Element('span', {'class': 'nav left'}).update(response.name));
 			header.insert(new Element('a', {'href': '#', 'class': 'nav right'}).update('Logout').observe('click', function(){
 				this.FB.logout();
-				window.location.reload();
+				// window.location.reload();
 			}.bind(this)));
 			document.fire('fbp:loggedin');
 		}.bind(this));
@@ -233,6 +240,17 @@
 					// else if (el.hasClassName('block')) {
 					// 	this.appendToBlocklist
 					// }
+					else if (el.hasClassName('group')) {
+						console.log('loading for group ' + el.name);
+						this.updateInterfaceList({type: 'group', 'value': el.name});
+						if (!$('seeAllControl')) {
+							$('controls').insert(
+								new Element('a', {'id':'seeAllControl','class': 'button'}).update('All Friends').observe('click', function(){
+									$('seeAllControl').remove();
+									this.updateInterfaceList();
+								}.bind(this)));
+						}
+					}
 					else if (el.hasClassName('user')) {
 						console.log('loading for user ' + el.name);
 						this.updateInterfaceList({type: 'uid', 'value': el.name});
@@ -266,6 +284,7 @@
 				uid = el.value.uid,
 				blocklist = this.blocklist.pluck('uid');
 
+			// don't non-music include if we're only doing music
 			if (this.config && this.config.type === 'onlyMusic' && !el.value.isMusic) {
 				return false;
 			}
@@ -273,12 +292,18 @@
 			uid = uid.select(function(u){
 				return !blocklist.include(u);
 			});
-			
+
 			if (uid.length <= 0) {
 				isBlocked = true;
 			}
 			
+			// filter on uid
 			if (this.config && this.config.type === 'uid' && !uid.include(this.config.value)) {
+				return false;
+			}
+
+			// filter on group
+			if (this.config && this.config.type === 'group' && !el.value.group.pluck('uid').include(this.config.value)) {
 				return false;
 			}
 			
@@ -289,9 +314,16 @@
 
 				el.value.data.each(function(el){
 					this.insert(new Element('a', {'href':'#', 'class': 'label user', 'name': el.from.id}).update(el.from.name));
+					// @todo
 					this.insert(new Element('a', {'href': '#', 'class': 'hide hiddenPlaylistControl block', 'name': el.from.id}).update('x'));
 				}.bind(li));
 
+				if (el.value.group && el.value.group.length > 0) {
+					el.value.group.each(function(el, index){
+						this.insert(new Element('a', {'href':'#', 'class': 'label group', 'name': el.uid}).update(el.name));
+					}.bind(li));
+				}
+				
 				if (el.value.isMusic) {
 					li.down('a').insert({before: new Element('span', {'class': 'music'}).update(new Element('a', {'href':'#'}).update('&#9835;'))});
 				}
@@ -300,7 +332,7 @@
 			}
 			
 			return true;
-		}.bind({listNode: this.listNode, list: this.list, blocklist:this.blocklist, config: config}));
+		}.bind({listNode: this.listNode, list: this.list, blocklist:this.blocklist, groups: this.groups, config: config}));
 		
 		// show it
 		this.listNode.show();
@@ -370,7 +402,7 @@
 
 	FBP.prototype.updateGroupData = function() {
 		this.groups.each(function(el){
-			this.updateData('/'+el+'/feed?limit=50', 'grouplist-'+el);
+			this.updateData('/'+el.uid+'/feed?limit=50', 'grouplist-'+el.name, el);
 		}.bind(this));
 		return this;
 	};
@@ -410,13 +442,19 @@
 							type: 'youtube',
 							id: this.key,
 							uid: [item.from.id],
+							group: [],
 							created: new Date(date[0], date[1], date[2], time[0], time[1], time[2]),
 							count: 1,
 							data: [item]
 						};
 					}
+					
+					if (this.group && !this.data['youtube_'+this.key]['group'].include(this.group)) {
+						this.data['youtube_'+this.key]['group'].push(this.group);
+					}
+					
 				}
-			}.bind({data: this.data, key: key}));
+			}.bind({data: this.data, key: key, group: this.group}));
 			
 			this.that.appendData(this.data);
 			
@@ -455,12 +493,12 @@
 		}
 	};
 
-	FBP.prototype.updateData = function(url, loadedEventName) {
+	FBP.prototype.updateData = function(url, loadedEventName, group) {
 		var data = {};
 		
 		console.log('requesting url ['+url+']');
 		
-		this.FB.api(url, this.parseFBResponse.bind({that: this, data: data, loadedEventName: loadedEventName}));
+		this.FB.api(url, this.parseFBResponse.bind({that: this, data: data, loadedEventName: loadedEventName, group: group}));
 		
 		return this;
 	};
@@ -514,4 +552,4 @@
 	}.bind(fbp);
 	
 
-})({apiKey: 'a887094ee69e067634556ed01a864cc4', FB: window.FB, footer: $('footer'), player: $('player')}, window);
+})({apiKey: 'a887094ee69e067634556ed01a864cc4', FB: window.FB, player: $('player')}, window);
