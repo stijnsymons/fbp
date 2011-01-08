@@ -491,6 +491,10 @@
 		}
 		return this;
 	};
+
+	if (Prototype.Browser.IE) {
+		$('content').update('sorry no IE support yet');
+	}
 	
 	var fbp = new FBP(config).init();
 	window.fbp = fbp;	//@todo: remove
