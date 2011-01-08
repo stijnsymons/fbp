@@ -4,11 +4,13 @@
 		this.apiKey = config.apiKey;
 		this.FB = config.FB;
 		this.loadState = [];
-		this.groups = [
-			{uid: 175011152513929, 'name': 'Klub Moustache'},
-			{uid: 116486325080867, 'name': 'Radio Kapelle'},
-			{uid: 116486325080865, 'name': 'unknown'}
-		];
+		this.groups = [];
+		// this.groups = [
+		// 	{uid: 175011152513929, 'name': 'Klub Moustache'},
+		// 	{uid: 116486325080867, 'name': 'Radio Kapelle'},
+		// 	{uid: 116486325080865, 'name': 'unknown'}
+		// ];
+		this.groups =  [];
 		this.data = {};
 		this.player = config.player;
 		this.current = 0;
@@ -28,6 +30,37 @@
 	FBP.prototype.removeFromBlocklist = function(config) {
 		return this;
 	};
+
+	FBP.prototype.appendToGroups = function(group) {
+		if (group.name && group.uid) {
+			if (!this.groups.pluck('uid').include(group.uid)) {
+				this.groups.push(group);
+			}
+		}
+		
+		this.save('groups', this.groups);
+		this.updateGroupData();
+		return this;
+	};
+	
+	FBP.prototype.removeFromBlocklist = function(config) {
+		return this;
+	};
+	
+	FBP.prototype.save = function(key, value) {
+		console.log('saving this:');
+		console.log(value);
+		localStorage.setItem('fbp.'+this.userResponse.id+'.'+key, Object.toJSON(value));
+		return this;
+	};
+	
+	FBP.prototype.load = function(key) {
+		var obj = localStorage.getItem('fbp.'+this.userResponse.id+'.'+key);
+		if (obj!==null) {
+			return obj.evalJSON();
+		}
+		return null;
+	}
 
 	FBP.prototype.init = function() {
 		// set the observers for private events
@@ -51,10 +84,15 @@
 			console.log('loadingcomplete');
 			this.updateInterfaceList();
 			this.updateInterfaceControls();
+			this.updateInterfaceConfig();
 			this.play();
 			
 			// check if it's music or not
 			this.requestIsMusic();
+		}.bind(this));
+		
+		document.observe('onbeforeunload', function(){
+			this.save('groups', this.groups);
 		}.bind(this));
 		
 		// check the state >> through private events
@@ -153,7 +191,7 @@
 		if (!response.session) {
 			//no session, set login button
 			$('header').update(new Element('a', {'href': '#', 'class': 'nav right'}).update('Login').observe('click', function(){
-				this.FB.login(this.handleLogin.bind(this), {perms:'read_stream'});
+				this.FB.login(this.handleLogin.bind(this), {perms:'read_stream,user_groups'});
 			}.bind(this)));
 
 			return this;
@@ -165,11 +203,15 @@
 			var header = $('header');
 			
 			this.userResponse = response;
+
+			// load the saved groups
+			this.groups = this.load('groups') || [];
+
 			header.update(new Element('img', {'src': 'https://graph.facebook.com/'+response.id+'/picture', 'class': 'left'}));
 			header.insert(new Element('span', {'class': 'nav left'}).update(response.name));
 			header.insert(new Element('a', {'href': '#', 'class': 'nav right'}).update('Logout').observe('click', function(){
 				this.FB.logout();
-				// window.location.reload();
+				window.location.reload();
 			}.bind(this)));
 			document.fire('fbp:loggedin');
 		}.bind(this));
@@ -210,9 +252,46 @@
 		$('controls').insert(new Element('a', {'class': 'button'}).update('>>|').observe('click', function(){
 			this.forward();
 		}.bind(this)));
-		$('controls').insert(new Element('a', {'id': 'toggleVideo', 'class': 'button red'}).update('[x]').observe('click', function(){
+		$('controls').insert(new Element('a', {'id': 'toggleVideo', 'class': 'button red'}).update('SFW').observe('click', function(){
 			this.showVideo();
 		}.bind(this)));
+	};
+	
+	FBP.prototype.updateInterfaceConfig = function(){
+		if ($('config') && !$('groups')){
+			$('config').insert(new Element('div', {'id': 'groups'}).update(
+					new Element('a', {'href': '#', 'class': 'button'}).update('Show Groups').observe('click', function(){
+						this.getGroups();
+					}.bind(this))
+				)
+			);
+		}
+	};
+	
+	FBP.prototype.getGroups = function(){
+		console.log('requesting url [/me/groups?limit=50]');
+		this.FB.api('/me/groups?limit=50', function(response){
+			console.log('requested [/me/groups?limit=50]');
+			console.log(response);
+			var ul = new Element('ul'), 
+				li;
+			
+			if (response && response.data) {
+				response.data.each(function(el) {
+					this.li = new Element('li').update(new Element('a', {'href': '#', 'name': el.id, 'rel': el.name}).update(el.name));
+					this.ul.insert(this.li);
+				}.bind({ul:ul, li:li}));
+			}
+			
+			ul.observe('click', function(evt){
+				var el = evt.findElement('a');
+				this.appendToGroups({uid:el.name, name:el.rel});
+			}.bind(this));
+			
+			console.log('denul');
+			console.log(ul);
+			$('groups').insert(ul);
+		}.bind(this));
 	};
 	
 	FBP.prototype.updateInterfaceList = function(config) {
@@ -274,7 +353,7 @@
 		
 		// load updated list
 		list = this.data.sortBy(function(el){
-			return el.created;
+			return el.value.created.valueOf();
 		});
 		
 		this.list = new DoublyLinkedList();
@@ -377,19 +456,20 @@
 		var dataArray = this.list.item(this.current).data,
 			caption = $('caption');
 		
-		caption.update();
+		caption.update(new Element('div').update(dataArray[0].name));
+		caption.insert(new Element('div').insert(dataArray[0].description));
 		
 		dataArray.each(function(el){
 			var captionItem = new Element('div', {'class': 'captionItem'}),
 				wrapper = new Element('div', {'class': 'wrapper left'});
 			captionItem.insert(new Element('div', {'class': 'left'}).update(new Element('img', {'src': 'https://graph.facebook.com/'+el.from.id+'/picture'})));
 			
-			wrapper.insert(new Element('div', {'class': 'name'}).insert(el.from.name));
-			if (el.name) {
-				wrapper.insert(new Element('div', {'class': 'description'}).insert(el.name));
-			}
-			if (el.description && el.name !== el.description) {
-				wrapper.insert(new Element('div', {'class': 'description'}).insert(el.description));
+			// wrapper.insert(new Element('div', {'class': 'name'}).insert(el.from.name));
+			// if (el.name) {
+			// 	wrapper.insert(new Element('div', {'class': 'description'}).insert(el.name));
+			// }
+			if (el.message && el.name !== el.message) {
+				wrapper.insert(new Element('div', {'class': 'description'}).insert(el.message));
 			}
 			this.insert(captionItem.insert(wrapper));
 		}.bind(caption));
@@ -438,15 +518,18 @@
 						created = item.created_time.split('T');
 						date = created[0].split('-');
 						time = created[1].substr(0,created[1].indexOf('+')).split(':');
+						
 						this.data['youtube_'+this.key] = {
 							type: 'youtube',
 							id: this.key,
 							uid: [item.from.id],
 							group: [],
-							created: new Date(date[0], date[1], date[2], time[0], time[1], time[2]),
+							created: new Date(),
 							count: 1,
 							data: [item]
 						};
+						this.data['youtube_'+this.key].created.setFullYear(parseInt(date[0],10), parseInt(date[1],10)-1, parseInt(date[2],10));
+						this.data['youtube_'+this.key].created.setHours(parseInt(time[0],10), parseInt(time[1],10), parseInt(time[2],10));
 					}
 					
 					if (this.group && !this.data['youtube_'+this.key]['group'].include(this.group)) {
