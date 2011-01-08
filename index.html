@@ -4,46 +4,30 @@
 		<meta http-equiv="content-type" content="text/html; charset=utf-8">
 		<title>fbp</title>
 		<link rel="stylesheet" href="fbp.css">
-		<script src="http://ajax.googleapis.com/ajax/libs/prototype/1.6.1.0/prototype.js"></script>
-		<script src="http://ajax.googleapis.com/ajax/libs/swfobject/2.2/swfobject.js"></script>
-		<script src="http://connect.facebook.net/en_US/all.js"></script>
 	</head>
 
 	<body>
-		<div id="header">
-			<div id="headerBox">
-				<div id="title">fbp</div>
-				<div style="float:right;">
-					<a id="userLogin" href="#" class="medium button">Login</a>
-					<a id="userLogout" href="#" class="medium button">Logout</a>
-					<span id="userAvatar"></span>
-					<span id="userName"></span>
-				</div>
-			</div>
-		</div>
-
+		<div id="bar"></div>
 		<div id="content">
-			<div class="left">
+			<div id="header"></div>
+			<div class="left col1">
 				<div id="player"></div>
-				<div id="controls">
-					<a id="controlsPrevious" class="medium button">Previous</a>
-					<a id="controlsForward" class="medium button">Forward</a>
-				</div>
-				<div id="placeholderCaption"></div>
-				<div id="placeholderExtras" style="display:none;">
-					<p>
-						<input type="text" id="extraFollow" size="40" value="Input Facebook URL" class="noentry"></input><a id="extraFollowButton" href="#" class="medium button">Follow</a>
-						<div id="placeholderUnfollowList" style="display:none;"></div>
-					</p>
-				</div>
+				<div id="controls"></div>
+				<div id="caption"></div>
 			</div>
-			<div class="right">
-				<div id="placeholderList"></div>
+			<div class="right col2">
+				<div id="list"></div>
 			</div>
-
-			<div id="fb-root"></div>
+			<div id="footer" class="clearfix"></div>
 		</div>
-		
+
+
+		<div id="fb-root"></div>
+
+		<script src="http://ajax.googleapis.com/ajax/libs/prototype/1.7.0.0/prototype.js"></script>
+		<script src="http://ajax.googleapis.com/ajax/libs/swfobject/2.2/swfobject.js"></script>
+		<script src="http://connect.facebook.net/en_US/all.js"></script>
+		<script src="https://github.com/nzakas/computer-science-in-javascript/raw/master/data-structures/doubly-linked-list/doubly-linked-list.js"></script>
 		<script src="fbp.js"></script>
 	</body>
 </html>

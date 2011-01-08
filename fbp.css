@@ -2,43 +2,78 @@ body {
 	color: #111111;
 	font:12px/1.5 "Lucida Grande",Arial,sans-serif;
 	margin: 0px;
+	width: 100%;
 }
+ul, li {
+	list-style-image:none;
+	list-style-position:outside;
+	list-style-type:none;
+	margin: 0px;
+	padding: 0px;
+}
+.clearfix {
+	display: block;
+	}
+.left {
+	float:left;
+	}
+.right {
+	float: right;
+	}
+.col1 {
+	width:300px;
+	margin: 0 10px 0 0;
+}
+.col2 {
+	width: 670px;
+}
+
+.show {
+	}
+	.show:hover {
+		display:none;
+		}
+.hide {
+	display:none;
+	}
+	.hide:hover {
+		display: block;
+		}
+
 
 /**
  * HEADER 
  **/
-#header {
-	height: 30px; 
-	background-color: #354242; 
-	color: white;
-	margin-bottom: 10px;
-}
-#header #title {
-	font-family: Georgia;
-	font-size: 23px;
-	font-style: italic;
-}
-#headerBox {
-	width:980px;
+#bar {
+	background-color: #000;
+	height: 20px;
+	left: 0;
+	position: absolute;
+	width: 100%;
+	z-index: -1;
+	}
+
+#content {
+	width: 980px;
 	margin: 0 auto;
-}
-#header #title {
-	float:left;
-}
-#header #userMenu {
-	float:right;
-}
-#header #userName {
-	font-family: Georgia;
-	font-size: 12px;
-	font-style: italic;
-}
-#header img {
-	background-color: #fff;
-	height: 25px;
-	margin-right: 5px;
-	padding: 2px;
-}
+	}
+
+#header {
+	color: #fff;
+	height: 45px;
+	}
+	#header img {
+		width: 40px;
+		border-color: #000;
+		border-style: solid;
+		border-width: 2px;
+		}
+	#header a:visited {
+		color: #fff;
+		}
+	#header .nav {
+		margin: 0 0 0 10px;
+		}
 
 /**
  * BUTTONS
@@ -57,7 +92,8 @@ body {
 	border-bottom: 1px solid rgba(0,0,0,0.25);
 	position: relative;
 	cursor: pointer;
-}
+	margin: 0 3px 5px 0;
+	}
 	.button:hover							{ background-color: #111; color: #fff; }
 	.button:active							{ top: 1px; }
 	.small.button, .small.button:visited 	{ font-size: 11px; padding: ; }
@@ -66,77 +102,64 @@ body {
 	.large.button, .large.button:visited 	{ font-size: 14px; padding: 8px 14px 9px; }
 	.blue.button, .blue.button:visited		{ background-color: #2daebf; }
 	.blue.button:hover						{ background-color: #007d9a; }
-/**
- * CONTENT
- **/
-#content {
-	width: 980px;
-	margin: 0 auto;
-}
-.left {
-	float: left;
-	width: 480px;
-}
-.right {
-	float: right;
-	width: 490px;
-}
-/**
- * PLAYLIST
- **/
-#list ul {
-	list-style: none outside none;
-	padding: 10px;
-	margin: 0px;
-}
-	#list a {
-		text-decoration: none;
-	}
-.list_from {
-	margin: 0 5px 0 10px;
-	-moz-border-radius:5px 5px 5px 5px;
-	background:none repeat scroll 0 0 #C9DE55;
-	color:#FFFFFF;
-	font-weight:bold;
-	margin-right:5px;
-	padding:1px 5px;
-}
-.list_name {
-	margin: 0 5px 0 10px;
-}
-/**
- * PLAYER
- **/
-#player {
-	display:block;
-}
-#caption {
-	margin-top: 10px;
-}
-#caption img {
-	float: left;
-	margin: 0 10px;
-}
-#caption #from {
-	font-weight: bold;
-}
-#caption #message {
-	font-style: italic;
-	background-color: #7D9100;
-	color: #FFFF9D;
-	padding: 5px;
-}
-/**
- * CONTROLS
- **/
-#controls {
-	background-color: #354242;
+
+#controls .button, #controls .button:visited {
+	width: 28px;
+	text-align: center;
 }
 
 /**
- * EXTRAS
+ * PLAYLIST
  **/
-.noentry input {
-	font-style: italic;
-	color: #DDD;
+#list {
+	margin: 0 0 0 20px;
 }
+.label {
+	background:none repeat scroll 0 0 #C9DE55;
+	color:#FFFFFF;
+	-moz-border-radius:5px 5px 5px 5px;
+	margin: 0 0 0 5px;
+	font-weight:bold;
+	padding:1px 5px;
+	}
+	.label a {
+		text-decoration: none;
+	}
+
+.music a {
+	display:block;
+	float: left;
+	margin: 0 0 0 -10px;
+	color: #ccc;
+	text-decoration: none;
+}
+.music a:visited {
+	color: #ccc;
+	text-decoration: none;
+}
+
+
+/**
+ * caption
+ **/
+.captionItem {
+	margin: 0 0 10px 0;
+	width: 300px;
+	overflow: hidden;
+	}
+	.captionItem .wrapper {
+		background-color: #C9DE55;
+		width: 233px;
+		font-size:10px;
+		padding: 3px;
+	}
+	.captionItem img {
+		display:block;
+		margin-right: 5px;
+		padding: 2px;
+		background-color: #fff;
+		border: 1px solid #000;
+	}
+	.captionItem .name {
+		font-weight: bold;
+	}
