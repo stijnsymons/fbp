@@ -4,16 +4,27 @@
 		this.apiKey = config.apiKey;
 		this.FB = config.FB;
 		this.loadState = [];
+		this.groups = [
+			175011152513929,	// klub moustache
+			116486325080867,		// radio kapelle
+			116486325080865
+		];
 		this.data = {};
 		this.player = config.player;
 		this.footer = config.footer;
 		this.current = 0;
 		this.blocklist = [{uid:582789594, nick:'Bart Becks'},{uid:123, nick: 'bla'}];	// block bb
+		this.offset = 0;
 		return this;
 	};
 	
 	FBP.prototype.appendToBlocklist = function(uid, nick) {
-		// if (!this.blocklist())
+		// this.blocklist = this.blocklist.push({uid: uid, nick: nick}).uniq(false);
+		// return this;
+	};
+	
+	FBP.prototype.removeFromBlocklist = function(config) {
+		return this;
 	};
 
 	FBP.prototype.init = function() {
@@ -22,7 +33,7 @@
 			console.log('fbp:loggedin caught');
 			// this.getStoredList();
 			this.updateHomeData();
-			// this.updateGroupData();
+			this.updateGroupData();
 		}.bind(this));
 		
 		document.observe('fbp:listloaded', function(evt){
@@ -151,9 +162,7 @@
 			header.insert(new Element('span', {'class': 'nav left'}).update(response.name));
 			header.insert(new Element('a', {'href': '#', 'class': 'nav right'}).update('Logout').observe('click', function(){
 				this.FB.logout();
-				$('header').update(new Element('a', {'href': '#', 'class': 'nav right'}).update('Login').observe('click', function(){
-					this.FB.login(this.handleLogin.bind(this), {perms:'read_stream'});
-				}.bind(this)));
+				window.location.reload();
 			}.bind(this)));
 			document.fire('fbp:loggedin');
 		}.bind(this));
@@ -173,7 +182,7 @@
 		if (this.loadState.indexOf(type) < 0) {
 			this.loadState.push(type);
 			
-			if (this.loadState.length >= 1) {
+			if (this.loadState.length >= this.groups.length + 1) {
 				// fire event to trigger that all loading is done
 				document.fire('fbp:loadingcomplete');
 			}
@@ -211,7 +220,7 @@
 					if (el.hasClassName('track')) {
 						this.seek(parseInt(el.name,10));
 					}
-					else if (el.up('span').hasClassName('music')) {
+					else if (el.up(0).hasClassName('music')) {
 						this.updateInterfaceList({type: 'onlyMusic'});
 						if (!$('seeAllVideos')) {
 							$('controls').insert(
@@ -221,6 +230,9 @@
 								}.bind(this)));
 						}
 					}
+					// else if (el.hasClassName('block')) {
+					// 	this.appendToBlocklist
+					// }
 					else if (el.hasClassName('user')) {
 						console.log('loading for user ' + el.name);
 						this.updateInterfaceList({type: 'uid', 'value': el.name});
@@ -271,10 +283,15 @@
 			}
 			
 			if (isBlocked === false) {
-				li = new Element('li', {'id': 'youtube_' + el.value.id}).update(new Element('a',{'href':'#','name': index, 'class': 'track'}).update(el.value.data[0].name));
+				li = new Element('li', {'id': 'youtube_' + el.value.id}).update(
+					new Element('a',{'href':'#','name': index, 'class': 'track'}).update(el.value.data[0].name)
+				);
+
 				el.value.data.each(function(el){
-					this.insert(new Element('a', {'href':'#', 'class': 'label', 'name': el.from.id}).update(el.from.name));
+					this.insert(new Element('a', {'href':'#', 'class': 'label user', 'name': el.from.id}).update(el.from.name));
+					this.insert(new Element('a', {'href': '#', 'class': 'hide hiddenPlaylistControl block', 'name': el.from.id}).update('x'));
 				}.bind(li));
+
 				if (el.value.isMusic) {
 					li.down('a').insert({before: new Element('span', {'class': 'music'}).update(new Element('a', {'href':'#'}).update('&#9835;'))});
 				}
@@ -352,7 +369,90 @@
 	};
 
 	FBP.prototype.updateGroupData = function() {
-		return this.updateData('/116486325080867/feed', 'grouplist');
+		this.groups.each(function(el){
+			this.updateData('/'+el+'/feed?limit=50', 'grouplist-'+el);
+		}.bind(this));
+		return this;
+	};
+	
+	FBP.prototype.parseFBResponse = function(response) {
+		console.log('response data');
+		console.log(response);
+		
+		if (response.data && response.data.length > 0) {
+			var key;
+			this.that.offset = this.that.offset + 50;	// @todo
+			response.data.each(function(item, index) {
+				var created,date,time;
+				if (item.source && item.type === 'video' && item.source.indexOf('youtube') >= 0) {
+					// 2 patterns: 
+					// http://www.youtube.com/v/-hDl3tCuYf0&autoplay=1
+					// http://www.youtube.com/watch?v=-hDl3tCuYf0&NR=1
+					if (item.source.indexOf('/v/') >= 0) {
+						this.key = item.source.split('/')[4].split('&')[0];
+					}
+					else if (item.source.indexOf('v=') >= 0) {
+						this.key = item.source.split('v=')[1].split('&')[0];
+					}
+
+					if (this.data['youtube_'+this.key]) {
+						this.data['youtube_'+this.key]['data'].push(item);
+						this.data['youtube_'+this.key]['count'] = this.data['youtube_'+this.key]['data'].length;
+						if (!this.data['youtube_'+this.key]['uid'].include(item.from.id)) {
+							this.data['youtube_'+this.key]['uid'].push(item.from.id);
+						}
+					}
+					else {
+						created = item.created_time.split('T');
+						date = created[0].split('-');
+						time = created[1].substr(0,created[1].indexOf('+')).split(':');
+						this.data['youtube_'+this.key] = {
+							type: 'youtube',
+							id: this.key,
+							uid: [item.from.id],
+							created: new Date(date[0], date[1], date[2], time[0], time[1], time[2]),
+							count: 1,
+							data: [item]
+						};
+					}
+				}
+			}.bind({data: this.data, key: key}));
+			
+			this.that.appendData(this.data);
+			
+			if (response.paging && response.paging.previous) {
+				console.log(response.paging.previous);
+				console.log(this.that.offset);
+				if (this.that.offset <= 200) {
+					var q,limit, params,url;
+					console.log('still going');
+					
+					url    = response.paging.previous.substring(26,response.paging.previous.indexOf('?')) + '?';
+					params = response.paging.previous.toQueryParams();
+					
+					if (params.q) {
+						url = url + '&q=' + params.q;
+					}
+					if (params.limit) {
+						url = url + '&limit=' + params.limit;
+					}
+					
+					console.log('requesting ' + url + '&offset=' + this.that.offset);
+					
+					this.that.FB.api(url + '&offset=' + this.that.offset, this.that.parseFBResponse.bind({that: this.that, data: this.data, loadedEventName: this.loadedEventName+'1'}));
+				}
+				else {
+					document.fire('fbp:listloaded', {type: this.loadedEventName});
+				}
+				
+			}
+			else {
+				document.fire('fbp:listloaded', {type: this.loadedEventName});
+			}
+		}
+		else {
+			document.fire('fbp:listloaded', {type: this.loadedEventName});
+		}
 	};
 
 	FBP.prototype.updateData = function(url, loadedEventName) {
@@ -360,42 +460,7 @@
 		
 		console.log('requesting url ['+url+']');
 		
-		this.FB.api(url, function(response) {
-			console.log('response data');
-			console.log(response);
-			if (response.data && response.data.length > 0) {
-				var key;
-				response.data.each(function(item, index) {
-					var created,date,time;
-					if (item.link && item.type === 'video' && item.source.indexOf('youtube') >= 0) {
-						this.key = item.link.split('v=')[1].split('&')[0];
-						if (this.data['youtube_'+this.key]) {
-							this.data['youtube_'+this.key]['data'].push(item);
-							this.data['youtube_'+this.key]['count'] = this.data['youtube_'+this.key]['data'].length;
-							if (!this.data['youtube_'+this.key]['uid'].include(item.from.id)) {
-								this.data['youtube_'+this.key]['uid'].push(item.from.id);
-							}
-						}
-						else {
-							created = item.created_time.split('T');
-							date = created[0].split('-');
-							time = created[1].substr(0,created[1].indexOf('+')).split(':');
-							this.data['youtube_'+this.key] = {
-								type: 'youtube',
-								id: this.key,
-								uid: [item.from.id],
-								created: new Date(date[0], date[1], date[2], time[0], time[1], time[2]),
-								count: 1,
-								data: [item]
-							};
-						}
-					}
-				}.bind({data: data, key: key}));
-				
-				this.that.appendData(data);
-				document.fire('fbp:listloaded', {type: this.loadedEventName});
-			}
-		}.bind({that: this, loadedEventName: loadedEventName}));
+		this.FB.api(url, this.parseFBResponse.bind({that: this, data: data, loadedEventName: loadedEventName}));
 		
 		return this;
 	};
