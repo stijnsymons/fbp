@@ -54,7 +54,9 @@
 		index = groupUids.indexOf(group);
 
 		if (index >= 0) {
-			this.save('groups', this.groups.splice(index, 1));
+			this.groups.splice(index, 1);
+			this.save('groups', this.groups);
+			this.fetched.configGroups = false;
 			this.updateGroupData();
 		}
 
@@ -303,8 +305,9 @@
 				$('refreshConfigGroupsButton').fire('click');
 			}
 			else if (el.hasClassName('removeGroup')) {
-				alert('going to delete' + el.name);
+				console.log('going to delete' + el.name);
 				this.removeFromGroups(el.name);
+				console.log(window.fbp.groups);
 				$('refreshConfigGroupsButton').fire('click');
 			}
 			else {
@@ -331,6 +334,8 @@
 						$('configGroups').hide();
 						break;
 					case 'refreshConfigGroupsButton':
+						console.log('from refreshConfigGroupsButton');
+						console.log(window.fbp.groups);
 						$('configSubscribedGroupsList').update();
 						this.fetched.configGroups = false;
 						$('showConfigGroupsButton').fire('click');
