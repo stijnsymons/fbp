@@ -117,8 +117,16 @@ ul, li {
  **/
 #list {
 	margin: 0 0 0 20px;
-}
-.label {
+	}
+	#list a {
+		color: #000;
+		text-decoration: none;
+	}
+	#list a:visited {
+		color: #000;
+		text-decoration: none;
+	}
+#list .label {
 	background:none repeat scroll 0 0 #C9DE55;
 	color:#FFFFFF;
 	-moz-border-radius:5px 5px 5px 5px;
@@ -126,24 +134,41 @@ ul, li {
 	font-weight:bold;
 	padding:1px 5px;
 	}
-	.label a {
+	#list .label a {
+		color: #fff;
 		text-decoration: none;
 	}
-	.label.group {
+	#list .label a:visited {
+		color: #fff;
+		text-decoration: none;
+	}
+	#list .label.group {
 		background: none repeat scroll 0 0 gray;
 	}
 
-.music a {
+#list .music a {
 	display:block;
 	float: left;
 	margin: 0 0 0 -10px;
 	color: #ccc;
 	text-decoration: none;
-}
-.music a:visited {
+	}
+#list .music a:visited {
 	color: #ccc;
 	text-decoration: none;
-}
+	}
+#list .playing {
+	background: orange;
+	padding: 10px;
+	margin: 5px 0;
+	}
+	#list .playing a {
+		font-weight: bold;
+		color:white;
+	}
+	#list .playing a:visited {
+		color:white;
+	}
 
 
 /**

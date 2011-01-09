@@ -261,10 +261,14 @@
 					this.previous();
 					break;
 				case 'startButton':
-					this.player.startVideo();
+					this.player.playVideo();
+					el.hide();
+					$('pauzeButton').show();
 					break;
 				case 'pauzeButton':
 					this.player.pauseVideo();
+					el.hide();
+					$('startButton').show();
 					break;
 				case 'forwardButton':
 					this.forward();
@@ -362,7 +366,7 @@
 	};
 	
 	FBP.prototype.updateInterfaceList = function(config) {
-		var list, li;
+		var list, li, playlistItem;
 		console.log('updating interface playlist');
 		
 		if (!this.listNode) {
@@ -455,7 +459,8 @@
 			}
 			
 			if (isBlocked === false) {
-				li = new Element('li', {'id': 'youtube_' + el.value.id}).update(
+				li = new Element('li', {'id': 'youtube_' + el.value.id});
+				playlistItem = new Element('div', {'id': 'playlist-'+index}).update(
 					new Element('a',{'href':'#','name': index, 'class': 'track'}).update(el.value.data[0].name)
 				);
 
@@ -463,18 +468,19 @@
 					this.insert(new Element('a', {'href':'#', 'class': 'label user', 'name': el.from.id}).update(el.from.name));
 					// @todo
 					this.insert(new Element('a', {'href': '#', 'class': 'hide hiddenPlaylistControl block', 'name': el.from.id}).update('x'));
-				}.bind(li));
+				}.bind(playlistItem));
 
 				if (el.value.group && el.value.group.length > 0) {
 					el.value.group.each(function(el, index){
 						this.insert(new Element('a', {'href':'#', 'class': 'label group', 'name': el.uid}).update(el.name));
-					}.bind(li));
+					}.bind(playlistItem));
 				}
 				
 				if (el.value.isMusic) {
-					li.down('a').insert({before: new Element('span', {'class': 'music'}).update(new Element('a', {'href':'#'}).update('&#9835;'))});
+					playlistItem.down('a').insert({before: new Element('span', {'class': 'music'}).update(new Element('a', {'href':'#'}).update('&#9835;'))});
 				}
-				this.listNode.insert(li);
+				
+				this.listNode.insert(li.insert(playlistItem));
 				this.list.add(el.value);
 			}
 			
@@ -509,6 +515,8 @@
 	FBP.prototype.seek = function(index) {
 		if (index >= 0 && index < this.list.size()) {
 			console.log('seeking for ' + index + ' currently at ' + this.current);
+			$('playlist-'+this.current).removeClassName('playing');
+			$('playlist-'+index).addClassName('playing');
 			this.current = index;
 			this.player.loadVideoById(this.list.item(index).id);
 			this.player.playVideo();
@@ -680,7 +688,8 @@
 		this.player = $(playerId);
 		this.player.addEventListener('onStateChange', 'youtubePlayerStateChange');
 		this.player.setStyle({'visibility': 'hidden', 'height': '0px'});
-		this.player.playVideo();
+		// this.player.playVideo();
+		this.seek(0);
 	}.bind(fbp);
 	
 
