@@ -75,6 +75,13 @@ ul, li {
 		margin: 0 0 0 10px;
 		}
 
+#status {
+	background-color:orange;
+	padding:50px;
+	margin:20px 0;
+	font-size:30px;
+	font-weight:bold;
+	}
 /**
  * BUTTONS
  **/

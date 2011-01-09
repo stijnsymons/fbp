@@ -83,6 +83,7 @@
 		document.observe('fbp:loggedin', function(){
 			console.log('fbp:loggedin caught');
 			// this.getStoredList();
+			$('status').update('Fetching feeds&hellip;');
 			this.updateHomeData();
 			this.updateGroupData();
 		}.bind(this));
@@ -98,6 +99,7 @@
 		
 		document.observe('fbp:loadingcomplete', function(){
 			console.log('loadingcomplete');
+			$('status').update('Starting interface&hellip;');
 			this.updateInterfaceList();
 			this.updateInterfaceControls();
 			this.updateInterfaceConfig();
@@ -232,14 +234,6 @@
 		return this;
 	};
 	
-	FBP.prototype.handleLoadHome = function(response) {
-		
-	};
-
-	FBP.prototype.handleLoadGroup = function(response) {
-		
-	};
-	
 	FBP.prototype.handleListLoaded = function(type) {
 		if (this.loadState.indexOf(type) < 0) {
 			this.loadState.push(type);
@@ -371,7 +365,10 @@
 	};
 	
 	FBP.prototype.updateInterfaceList = function(config) {
-		var list, li, playlistItem;
+		var list, 
+			li, 
+			playlistItem, 
+			counter = 0;
 		console.log('updating interface playlist');
 		
 		if (!this.listNode) {
@@ -435,7 +432,7 @@
 		
 		this.list = new DoublyLinkedList();
 		
-		list.each(function(el,index) {
+		list.each(function(el) {
 			var isBlocked = false,
 				uid = el.value.uid,
 				blocklist = this.blocklist.pluck('uid');
@@ -465,8 +462,8 @@
 			
 			if (isBlocked === false) {
 				li = new Element('li', {'id': 'youtube_' + el.value.id});
-				playlistItem = new Element('div', {'id': 'playlist-'+index}).update(
-					new Element('a',{'href':'#','name': index, 'class': 'track'}).update(el.value.data[0].name)
+				playlistItem = new Element('div', {'id': 'playlist-'+this.counter}).update(
+					new Element('a',{'href':'#','name': this.counter, 'class': 'track'}).update(el.value.data[0].name)
 				);
 
 				el.value.data.each(function(el){
@@ -487,10 +484,11 @@
 				
 				this.listNode.insert(li.insert(playlistItem));
 				this.list.add(el.value);
+				this.counter++;
 			}
 			
 			return true;
-		}.bind({listNode: this.listNode, list: this.list, blocklist:this.blocklist, groups: this.groups, config: config}));
+		}.bind({listNode: this.listNode, list: this.list, blocklist:this.blocklist, groups: this.groups, counter: counter, config: config}));
 		
 		// show it
 		this.listNode.show();
@@ -498,6 +496,7 @@
 	};
 	
 	FBP.prototype.play = function(){
+		$('status').update('Loaded ' + this.list.size() + ' videos');
 		swfobject.embedSWF(
 			'http://www.youtube.com/v/' + this.list.item(this.current).id + '&enablejsapi=1&playerapiid=player', 
 			'player', '300', '185', '8', null, null, 
