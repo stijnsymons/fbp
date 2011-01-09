@@ -12,8 +12,23 @@
 			<div id="header"></div>
 			<div class="left col1">
 				<div id="player"></div>
-				<div id="controls"></div>
-				<div id="caption"></div>
+				<ul id="controls" style="display:none;">
+					<li><a class="button" id="previousButton">|&lt;&lt;</a></li>
+					<li><a class="button" id="startButton">&gt;</a></li>
+					<li><a class="button" id="pauzeButton">||</a></li>
+					<li><a class="button" id="forwardButton">&gt;&gt;|</a></li>
+					<li><a class="button red" id="sfwButton">SFW</a></li>
+					<li><a class="button red" id="nsfwButton" style="display:none;">NSFW</a></li>
+				</ul>
+
+				<div id="caption">
+					<div id="videoCaptionWrapper">
+						<div id="videoCaptionName"></div>
+						<div id="videoCaptionDescription"></div>
+					</div>
+					<div id="userCaptionWrapper"></div>
+				</div>
+
 				<div id="config"></div>
 			</div>
 			<div class="right col2">

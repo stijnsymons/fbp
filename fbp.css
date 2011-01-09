@@ -103,6 +103,10 @@ ul, li {
 	.blue.button, .blue.button:visited		{ background-color: #2daebf; }
 	.blue.button:hover						{ background-color: #007d9a; }
 
+#controls li {
+	float: left;
+}
+
 #controls .button, #controls .button:visited {
 	width: 28px;
 	text-align: center;
@@ -145,24 +149,26 @@ ul, li {
 /**
  * caption
  **/
-.captionItem {
+#caption {
 	margin: 0 0 10px 0;
 	width: 300px;
 	overflow: hidden;
+	font-size:10px;
 	}
-	.captionItem .wrapper {
-		background-color: #C9DE55;
-		width: 233px;
-		font-size:10px;
-		padding: 3px;
-	}
-	.captionItem img {
+	#caption img {
 		display:block;
 		margin-right: 5px;
 		padding: 2px;
 		background-color: #fff;
 		border: 1px solid #000;
 	}
-	.captionItem .name {
+	#caption .name {
 		font-weight: bold;
+	}
+.captionItem {
+	}
+	.captionItem .wrapper {
+		background-color: #C9DE55;
+		width: 233px;
+		padding: 3px;
 	}

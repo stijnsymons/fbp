@@ -240,27 +240,56 @@
 	};
 	
 	FBP.prototype.updateInterfaceControls = function() {
-		$('controls').insert(new Element('a', {'class': 'button'}).update('|<<').observe('click', function(){
-			this.previous();
-		}.bind(this)));
-		$('controls').insert(new Element('a', {'class': 'button'}).update('>').observe('click', function(){
-			this.player.playVideo();
-		}.bind(this)));
-		$('controls').insert(new Element('a', {'class': 'button'}).update('||').observe('click', function(){
-			this.player.pauseVideo();
-		}.bind(this)));
-		$('controls').insert(new Element('a', {'class': 'button'}).update('>>|').observe('click', function(){
-			this.forward();
-		}.bind(this)));
-		$('controls').insert(new Element('a', {'id': 'toggleVideo', 'class': 'button red'}).update('SFW').observe('click', function(){
-			this.showVideo();
-		}.bind(this)));
+		var controls = $('controls');
+		
+		controls.observe('click', function(evt){
+			var el = evt.findElement('a');
+			
+			switch (el.id) {
+				case 'previousButton':
+					this.previous();
+					break;
+				case 'startButton':
+					this.player.startVideo();
+					break;
+				case 'pauzeButton':
+					this.player.pauseVideo();
+					break;
+				case 'forwardButton':
+					this.forward();
+					break;
+				case 'nsfwButton':
+					this.player.setStyle({'visibility': 'visible', 'height': '185px'});
+					el.hide();
+					$('sfwButton').show();
+					break;
+				case 'sfwButton':
+					this.player.setStyle({'visibility': 'hidden', 'height': '0px'});
+					el.hide();
+					$('nsfwButton').show();
+					break;
+			}
+		}.bind(this));
+		
+		controls.show();
+		
+		return this;
 	};
 	
 	FBP.prototype.updateInterfaceConfig = function(){
 		if ($('config') && !$('groups')){
 			$('config').insert(new Element('div', {'id': 'groups'}).update(
-					new Element('a', {'href': '#', 'class': 'button'}).update('Show Groups').observe('click', function(){
+					new Element('a', {'href': '#', 'class': 'button', 'id': 'showGroupsButton'}).update('Show Groups').observe('click', function(){
+						var ul = new Element('ul'),
+							title = new Element('h3').update('Subscribed Groups'),
+							li;
+
+						this.groups.each(function(group) {
+							this.li = new Element('a', {'href': '#', 'name': group.uid}).update(group.name);
+							this.ul.insert(this.li);
+						}.bind({ul:ul, li:li}));
+						
+						$('config').insert(title).insert(ul);
 						this.getGroups();
 					}.bind(this))
 				)
@@ -456,22 +485,25 @@
 		var dataArray = this.list.item(this.current).data,
 			caption = $('caption');
 		
-		caption.update(new Element('div').update(dataArray[0].name));
-		caption.insert(new Element('div').insert(dataArray[0].description));
+		caption.update(new Element('div', {'class': 'name'}).update(dataArray[0].name));
+		caption.insert(new Element('div', {'class': 'description'}).insert(dataArray[0].description));
 		
 		dataArray.each(function(el){
 			var captionItem = new Element('div', {'class': 'captionItem'}),
-				wrapper = new Element('div', {'class': 'wrapper left'});
+				wrapper;
+
+				console.log('dataArray');
+				console.log(el);
+
 			captionItem.insert(new Element('div', {'class': 'left'}).update(new Element('img', {'src': 'https://graph.facebook.com/'+el.from.id+'/picture'})));
 			
-			// wrapper.insert(new Element('div', {'class': 'name'}).insert(el.from.name));
-			// if (el.name) {
-			// 	wrapper.insert(new Element('div', {'class': 'description'}).insert(el.name));
-			// }
-			if (el.message && el.name !== el.message) {
+			if (el.message && el.message.length > 0 && el.name !== el.message) {
+				wrapper = new Element('div', {'class': 'wrapper left'})
+				// wrapper.insert(new Element('div', {'class': 'name'}).insert(el.message));
 				wrapper.insert(new Element('div', {'class': 'description'}).insert(el.message));
+				captionItem.insert(wrapper);
 			}
-			this.insert(captionItem.insert(wrapper));
+			this.insert(captionItem);
 		}.bind(caption));
 		return this;
 	};
@@ -591,28 +623,6 @@
 		return this;
 	};
 	
-	FBP.prototype.hideVideo = function() {
-		var button = $('toggleVideo');
-		this.player.setStyle({'visibility': 'hidden', 'height': '0px'});
-		if (toggleVideo) {
-			button.observe('click', function(){
-				this.showVideo();
-			}.bind(this));
-		}
-		return this;
-	};
-	
-	FBP.prototype.showVideo = function() {
-		var button = $('toggleVideo');
-		this.player.setStyle({'visibility': 'visible', 'height': '185px'});
-		if (toggleVideo) {
-			button.observe('click', function(){
-				this.hideVideo();
-			}.bind(this));
-		}
-		return this;
-	};
-
 	if (Prototype.Browser.IE) {
 		$('content').update('sorry no IE support yet');
 	}
@@ -630,8 +640,8 @@
 	window.onYouTubePlayerReady = function(playerId) {
 		this.player = $(playerId);
 		this.player.addEventListener('onStateChange', 'youtubePlayerStateChange');
+		this.player.setStyle({'visibility': 'hidden', 'height': '0px'});
 		this.player.playVideo();
-		this.hideVideo();
 	}.bind(fbp);
 	
 
