@@ -19,6 +19,9 @@
 			{uid:123, nick: 'bla'}];				// testing for booboo's
 			
 		this.offset = 0;
+		this.fetched = {
+			configGroups: false
+		};
 		return this;
 	};
 	
@@ -27,7 +30,7 @@
 		// return this;
 	};
 	
-	FBP.prototype.removeFromBlocklist = function(config) {
+	FBP.prototype.removeFromBlocklist = function(uid) {
 		return this;
 	};
 
@@ -35,15 +38,26 @@
 		if (group.name && group.uid) {
 			if (!this.groups.pluck('uid').include(group.uid)) {
 				this.groups.push(group);
+				
+				this.save('groups', this.groups);
+				this.updateGroupData();
 			}
 		}
 		
-		this.save('groups', this.groups);
-		this.updateGroupData();
 		return this;
 	};
 	
-	FBP.prototype.removeFromBlocklist = function(config) {
+	FBP.prototype.removeFromGroups = function(group) {
+		var groupUids = this.groups.pluck('uid'),
+			index;
+
+		index = groupUids.indexOf(group);
+
+		if (index >= 0) {
+			this.save('groups', this.groups.splice(index, 1));
+			this.updateGroupData();
+		}
+
 		return this;
 	};
 	
@@ -104,11 +118,9 @@
 	};
 	
 	FBP.prototype.requestIsMusic = function(id) {
-		// http://gdata.youtube.com/feeds/api/videos/9jIwvQkBUt4?v=2&alt=json-in-script&callback=fbp.appendIsMusic&key=AI39si5Px-2l8kW5gZbCHrqMwwG5qywE5qlelDBZsZ9T5i9N9KITHcIjYCB9Un7nlWPzCRDu7wdlpYAzZcURhzFFCohBBu7H2g
 		var script;
 		
 		if (id) {
-			console.log('checking for [' + id + ']');
 			script = new Element('script', {src: 'http://gdata.youtube.com/feeds/api/videos/'+id+'?v=2&alt=json-in-script&callback=fbp.appendIsMusic&key=AI39si5Px-2l8kW5gZbCHrqMwwG5qywE5qlelDBZsZ9T5i9N9KITHcIjYCB9Un7nlWPzCRDu7wdlpYAzZcURhzFFCohBBu7H2g', async: 'true'});
 			document.getElementsByTagName('head')[0].appendChild(script);
 		} else {
@@ -128,7 +140,6 @@
 			});
 			if (cat['$t'] === 'Music') {
 				key = 'youtube_' + root.entry['media$group']['yt$videoid']['$t'];
-				console.log('found music on YouTube for ['+key+']');
 				value = this.data.get(key);
 				value.isMusic = true;
 				this.data.set(key, value);
@@ -277,50 +288,77 @@
 	};
 	
 	FBP.prototype.updateInterfaceConfig = function(){
-		if ($('config') && !$('groups')){
-			$('config').insert(new Element('div', {'id': 'groups'}).update(
-					new Element('a', {'href': '#', 'class': 'button', 'id': 'showGroupsButton'}).update('Show Groups').observe('click', function(){
-						var ul = new Element('ul'),
-							title = new Element('h3').update('Subscribed Groups'),
-							li;
+		var configUl = $('config');
+		
+		configUl.observe('click', function(evt){
+			var el = evt.findElement('a'),
+				li;
+			
+			if (el.hasClassName('addGroup')) {
+				this.appendToGroups({uid: el.name, name: el.innerHTML});
+				$('refreshConfigGroupsButton').fire('click');
+			}
+			else if (el.hasClassName('removeGroup')) {
+				alert('going to delete' + el.name);
+				this.removeFromGroups(el.name);
+				$('refreshConfigGroupsButton').fire('click');
+			}
+			else {
+				switch (el.id) {
+					case 'showConfigGroupsButton':
+						if (!this.fetched.configGroups) {
+							this.groups.each(function(group) {
+								this.li = new Element('li').update(
+									new Element('a', {'href': '#', 'class': 'removeGroup', 'name': group.uid}).update(group.name)
+								);
+								this.ul.insert(this.li);
+							}.bind({ul:$('configSubscribedGroupsList'), li:li}));
 
-						this.groups.each(function(group) {
-							this.li = new Element('a', {'href': '#', 'name': group.uid}).update(group.name);
-							this.ul.insert(this.li);
-						}.bind({ul:ul, li:li}));
-						
-						$('config').insert(title).insert(ul);
-						this.getGroups();
-					}.bind(this))
-				)
-			);
-		}
+							this.fetched.configGroups = true;
+							this.getMyGroups($('configMyGroupsList'));
+						}
+						$('showConfigGroupsButton').hide();
+						$('hideConfigGroupsButton').show();
+						$('configGroups').show();
+						break;
+					case 'hideConfigGroupsButton':
+						$('hideConfigGroupsButton').hide();
+						$('showConfigGroupsButton').show();
+						$('configGroups').hide();
+						break;
+					case 'refreshConfigGroupsButton':
+						$('configSubscribedGroupsList').update();
+						this.fetched.configGroups = false;
+						$('showConfigGroupsButton').fire('click');
+						break;
+				}
+			}
+		}.bind(this));
+		
+		configUl.show();
+		
+		return this;
 	};
 	
-	FBP.prototype.getGroups = function(){
+	FBP.prototype.getMyGroups = function(container){
 		console.log('requesting url [/me/groups?limit=50]');
 		this.FB.api('/me/groups?limit=50', function(response){
 			console.log('requested [/me/groups?limit=50]');
 			console.log(response);
-			var ul = new Element('ul'), 
-				li;
+			var li,
+				groupUids = this.groups.pluck('uid');
 			
 			if (response && response.data) {
 				response.data.each(function(el) {
-					this.li = new Element('li').update(new Element('a', {'href': '#', 'name': el.id, 'rel': el.name}).update(el.name));
-					this.ul.insert(this.li);
-				}.bind({ul:ul, li:li}));
+					if (!groupUids.include(el.id)) {
+						this.li = new Element('li').update(
+							new Element('a', {'href': '#', 'class': 'addGroup', 'name': el.id, 'rel': el.name}).update(el.name)
+						);
+						this.ul.insert(this.li);
+					}
+				}.bind({ul:this.container, li:li}));
 			}
-			
-			ul.observe('click', function(evt){
-				var el = evt.findElement('a');
-				this.appendToGroups({uid:el.name, name:el.rel});
-			}.bind(this));
-			
-			console.log('denul');
-			console.log(ul);
-			$('groups').insert(ul);
-		}.bind(this));
+		}.bind({container: container, groups: this.groups}));
 	};
 	
 	FBP.prototype.updateInterfaceList = function(config) {
@@ -329,8 +367,9 @@
 		
 		if (!this.listNode) {
 			this.listNode = new Element('ul', {id: 'listNode'}).hide().observe('click', function(evt){
-				var el,index;
-				el = evt.findElement('a');
+				var index,
+					el = evt.findElement('a');
+					
 				if (el) {
 					if (el.hasClassName('track')) {
 						this.seek(parseInt(el.name,10));

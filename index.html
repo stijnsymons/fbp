@@ -8,8 +8,11 @@
 
 	<body>
 		<div id="bar"></div>
+
 		<div id="content">
+
 			<div id="header"></div>
+
 			<div class="left col1">
 				<div id="player"></div>
 				<ul id="controls" style="display:none;">
@@ -17,8 +20,8 @@
 					<li><a class="button" id="startButton">&gt;</a></li>
 					<li><a class="button" id="pauzeButton">||</a></li>
 					<li><a class="button" id="forwardButton">&gt;&gt;|</a></li>
-					<li><a class="button red" id="sfwButton">SFW</a></li>
-					<li><a class="button red" id="nsfwButton" style="display:none;">NSFW</a></li>
+					<li><a class="button red" id="sfwButton" style="display:none;">SFW</a></li>
+					<li><a class="button red" id="nsfwButton">NSFW</a></li>
 				</ul>
 
 				<div id="caption">
@@ -29,14 +32,28 @@
 					<div id="userCaptionWrapper"></div>
 				</div>
 
-				<div id="config"></div>
+				<ul id="config" style="display:none;">
+					<li id="groups">
+						<a href="#" id="showConfigGroupsButton">Show my groups</a>
+						<a href="#" id="hideConfigGroupsButton" style="display:none;">Hide my groups</a>
+						<div id="configGroups" style="display:none;">
+							<h3>Subscribed Groups</h3>
+							<ul id="configSubscribedGroupsList"></ul>
+							<h3>My groups</h3>
+							<ul id="configMyGroupsList"></ul>
+							<a href="#" class="button" id="refreshConfigGroupsButton">Refresh Groups</a>
+						</div>
+					</li>
+				</ul>
+
 			</div>
+
 			<div class="right col2">
 				<div id="list"></div>
 			</div>
+
 			<div id="footer" class="clearfix"></div>
 		</div>
-
 
 		<div id="fb-root"></div>
 
