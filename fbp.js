@@ -19,9 +19,61 @@
 		return this;
 	};
 	
+	/* MAIN ------------------------------------------------------ */
+	
+	FBP.prototype.init = function() {
+		// set the observers for private events
+		document.observe('fbp:loggedin', function(){
+			console.log('fbp:loggedin caught');
+			$('status').update('Fetching feeds&hellip;');
+			this.updateHomeData();
+			this.updateGroupData();
+		}.bind(this));
+		
+		document.observe('fbp:listloaded', function(evt){
+			console.log('fbp:listloaded caught ' + evt.memo.type);
+			this.handleListLoaded(evt.memo.type);
+		}.bind(this));
+		
+		document.observe('fbp:loadingcomplete', function(){
+			console.log('loadingcomplete');
+			$('status').update('Starting interface&hellip;');
+			this.updateInterfaceList();
+			this.updateInterfaceControls();
+			this.updateInterfaceConfig();
+			this.play();
+			
+			// check if it's music or not
+			this.requestIsMusic();
+		}.bind(this));
+		
+		// check the state >> through private events
+		this.FB.init({apiKey: this.apiKey});
+
+		this.checkLoginStatus();
+		
+		return this;
+	};
+
+	FBP.prototype.save = function(key, value) {
+		console.log('saving this:');
+		console.log(value);
+		localStorage.setItem('fbp.'+this.userResponse.id+'.'+key, Object.toJSON(value));
+		return this;
+	};
+	
+	FBP.prototype.load = function(key) {
+		var obj = localStorage.getItem('fbp.'+this.userResponse.id+'.'+key);
+		if (obj!==null) {
+			return obj.evalJSON();
+		}
+		return null;
+	}
+
+	/* CONFIG ---------------------------------------------------- */
+	
 	FBP.prototype.appendToBlocklist = function(uid, nick) {
-		// this.blocklist = this.blocklist.push({uid: uid, nick: nick}).uniq(false);
-		// return this;
+		return this;
 	};
 	
 	FBP.prototype.removeFromBlocklist = function(uid) {
@@ -56,110 +108,9 @@
 
 		return this;
 	};
-	
-	FBP.prototype.save = function(key, value) {
-		console.log('saving this:');
-		console.log(value);
-		localStorage.setItem('fbp.'+this.userResponse.id+'.'+key, Object.toJSON(value));
-		return this;
-	};
-	
-	FBP.prototype.load = function(key) {
-		var obj = localStorage.getItem('fbp.'+this.userResponse.id+'.'+key);
-		if (obj!==null) {
-			return obj.evalJSON();
-		}
-		return null;
-	}
 
-	FBP.prototype.init = function() {
-		// set the observers for private events
-		document.observe('fbp:loggedin', function(){
-			console.log('fbp:loggedin caught');
-			$('status').update('Fetching feeds&hellip;');
-			this.updateHomeData();
-			this.updateGroupData();
-		}.bind(this));
-		
-		document.observe('fbp:listloaded', function(evt){
-			console.log('fbp:listloaded caught ' + evt.memo.type);
-			this.handleListLoaded(evt.memo.type);
-		}.bind(this));
-		
-		document.observe('fbp:loadingcomplete', function(){
-			console.log('loadingcomplete');
-			$('status').update('Starting interface&hellip;');
-			this.updateInterfaceList();
-			this.updateInterfaceControls();
-			this.updateInterfaceConfig();
-			this.play();
-			
-			// check if it's music or not
-			this.requestIsMusic();
-		}.bind(this));
-		
-		// document.observe('onbeforeunload', function(){
-		// 	this.save('groups', this.groups);
-		// }.bind(this));
-		
-		// check the state >> through private events
-		this.FB.init({apiKey: this.apiKey});
+	/* LOGIN ---------------------------------------------------- */
 
-		this.checkLoginStatus();
-		
-		return this;
-	};
-	
-	FBP.prototype.requestIsMusic = function(id) {
-		var script;
-		
-		if (id) {
-			script = new Element('script', {src: 'http://gdata.youtube.com/feeds/api/videos/'+id+'?v=2&alt=json-in-script&callback=fbp.appendIsMusic&key=AI39si5Px-2l8kW5gZbCHrqMwwG5qywE5qlelDBZsZ9T5i9N9KITHcIjYCB9Un7nlWPzCRDu7wdlpYAzZcURhzFFCohBBu7H2g', async: 'true'});
-			document.getElementsByTagName('head')[0].appendChild(script);
-		} else {
-			this.data.each(function(el){
-				this.requestIsMusic(el.value.id);
-			}.bind(this));
-		}
-		return this;
-	};
-	
-	FBP.prototype.appendIsMusic = function(root) {
-		var cat, key, value, link;
-
-		if (root && root.entry) {
-			cat = root.entry['media$group']['media$category'].find(function(el) {
-				return el.scheme === 'http://gdata.youtube.com/schemas/2007/categories.cat';
-			});
-			if (cat['$t'] === 'Music') {
-				key = 'youtube_' + root.entry['media$group']['yt$videoid']['$t'];
-				value = this.data.get(key);
-				value.isMusic = true;
-				this.data.set(key, value);
-				
-				link = $(key);
-				if (link) {
-					link = link.down('a');
-					if (link) {
-						link.insert({before: new Element('span', {'class': 'music'}).update(new Element('a', {'href':'#'}).update('&#9835;'))});
-					}
-				}
-			}
-		}
-		
-		return this;
-	};
-	
-	FBP.prototype.isMusic = function() {
-		return this;
-	};
-	
-	FBP.prototype.appendData = function(data) {
-		console.log('merging new data');
-		this.data = $H(this.data).merge(data);
-		return this;
-	}
-	
 	FBP.prototype.handleLogin = function(response) {
 		var FB = this.FB;
 
@@ -203,6 +154,197 @@
 				document.fire('fbp:loadingcomplete');
 			}
 		}
+		return this;
+	};
+
+	FBP.prototype.checkLoginStatus = function() {
+		this.FB.getLoginStatus(this.handleLogin.bind(this));
+		return this;
+	};
+	
+	/* DATA ------------------------------------------------------ */
+
+	FBP.prototype.requestIsMusic = function(id) {
+		var script;
+		
+		if (id) {
+			script = new Element('script', {src: 'http://gdata.youtube.com/feeds/api/videos/'+id+'?v=2&alt=json-in-script&callback=fbp.appendIsMusic&key=AI39si5Px-2l8kW5gZbCHrqMwwG5qywE5qlelDBZsZ9T5i9N9KITHcIjYCB9Un7nlWPzCRDu7wdlpYAzZcURhzFFCohBBu7H2g', async: 'true'});
+			document.getElementsByTagName('head')[0].appendChild(script);
+		} else {
+			this.data.each(function(el){
+				this.requestIsMusic(el.value.id);
+			}.bind(this));
+		}
+		return this;
+	};
+	
+	FBP.prototype.appendIsMusic = function(root) {
+		var cat, key, value, link;
+
+		if (root && root.entry) {
+			cat = root.entry['media$group']['media$category'].find(function(el) {
+				return el.scheme === 'http://gdata.youtube.com/schemas/2007/categories.cat';
+			});
+			if (cat['$t'] === 'Music') {
+				key = 'youtube_' + root.entry['media$group']['yt$videoid']['$t'];
+				value = this.data.get(key);
+				value.isMusic = true;
+				this.data.set(key, value);
+				
+				link = $(key);
+				if (link) {
+					link = link.down('a');
+					if (link) {
+						link.insert({before: new Element('span', {'class': 'music'}).update(new Element('a', {'href':'#'}).update('&#9835;'))});
+					}
+				}
+			}
+		}
+		
+		return this;
+	};
+	
+	// FBP.prototype.isMusic = function() {
+	// 	return this;
+	// };
+	// 
+	FBP.prototype.appendData = function(data) {
+		console.log('merging new data');
+		this.data = $H(this.data).merge(data);
+		return this;
+	}
+	
+	FBP.prototype.updateHomeData = function() {
+		return this.updateData('/me/home?q=youtube.com&limit=50', 'homelist');
+	};
+
+	FBP.prototype.updateGroupData = function() {
+		this.groups.each(function(el){
+			this.updateData('/'+el.uid+'/feed?limit=50', 'grouplist-'+el.name, el);
+		}.bind(this));
+		return this;
+	};
+
+	FBP.prototype.updateData = function(url, loadedEventName, group) {
+		this.FB.api(url, this.parseFBResponse.bind({that: this, loadedEventName: loadedEventName, group: group}));
+		return this;
+	};
+
+	FBP.prototype.parseFBResponse = function(response) {
+		console.log('response data');
+		console.log(response);
+		
+		if (response.data && response.data.length > 0) {
+			var key, data = {};
+			this.that.offset = this.that.offset + 50;	// @todo
+			response.data.each(function(item, index) {
+				var created,date,time;
+				if (item.source && item.type === 'video' && item.source.indexOf('youtube') >= 0) {
+					// 2 patterns: 
+					// http://www.youtube.com/v/-hDl3tCuYf0&autoplay=1
+					// http://www.youtube.com/watch?v=-hDl3tCuYf0&NR=1
+					if (item.source.indexOf('/v/') >= 0) {
+						this.key = item.source.split('/')[4].split('&')[0];
+					}
+					else if (item.source.indexOf('v=') >= 0) {
+						this.key = item.source.split('v=')[1].split('&')[0];
+					}
+
+					if (this.data['youtube_'+this.key]) {
+						this.data['youtube_'+this.key]['data'].push(item);
+						this.data['youtube_'+this.key]['count'] = this.data['youtube_'+this.key]['data'].length;
+						if (!this.data['youtube_'+this.key]['uid'].include(item.from.id)) {
+							this.data['youtube_'+this.key]['uid'].push(item.from.id);
+						}
+					}
+					else {
+						created = item.created_time.split('T');
+						date = created[0].split('-');
+						time = created[1].substr(0,created[1].indexOf('+')).split(':');
+						
+						this.data['youtube_'+this.key] = {
+							type: 'youtube',
+							id: this.key,
+							uid: [item.from.id],
+							group: [],
+							created: new Date(),
+							count: 1,
+							data: [item]
+						};
+						this.data['youtube_'+this.key].created.setFullYear(parseInt(date[0],10), parseInt(date[1],10)-1, parseInt(date[2],10));
+						this.data['youtube_'+this.key].created.setHours(parseInt(time[0],10), parseInt(time[1],10), parseInt(time[2],10));
+					}
+					
+					if (this.group && !this.data['youtube_'+this.key]['group'].include(this.group)) {
+						this.data['youtube_'+this.key]['group'].push(this.group);
+					}
+					
+				}
+			}.bind({data: data, key: key, group: this.group}));
+			
+			this.that.appendData(data);
+			
+			if (response.paging && response.paging.previous) {
+				console.log(response.paging.previous);
+				console.log(this.that.offset);
+				if (this.that.offset <= 200) {
+					var q,limit, params,url;
+					console.log('still going');
+					
+					url    = response.paging.previous.substring(26,response.paging.previous.indexOf('?')) + '?';
+					params = response.paging.previous.toQueryParams();
+					
+					if (params.q) {
+						url = url + '&q=' + params.q;
+					}
+					if (params.limit) {
+						url = url + '&limit=' + params.limit;
+					}
+					
+					console.log('requesting ' + url + '&offset=' + this.that.offset);
+					
+					this.that.FB.api(url + '&offset=' + this.that.offset, this.that.parseFBResponse.bind({that: this.that, data: this.data, loadedEventName: this.loadedEventName+'1'}));
+				}
+				else {
+					document.fire('fbp:listloaded', {type: this.loadedEventName});
+				}
+				
+			}
+			else {
+				document.fire('fbp:listloaded', {type: this.loadedEventName});
+			}
+		}
+		else {
+			document.fire('fbp:listloaded', {type: this.loadedEventName});
+		}
+	};
+
+	/* INTERFACE ------------------------------------------------- */
+
+	FBP.prototype.updateCaption = function() {
+		var dataArray = this.list[this.current].data,
+			caption = $('caption');
+		
+		caption.update(new Element('div', {'class': 'name'}).update(dataArray[0].name));
+		caption.insert(new Element('div', {'class': 'description'}).insert(dataArray[0].description));
+		
+		dataArray.each(function(el){
+			var captionItem = new Element('div', {'class': 'captionItem'}),
+				wrapper;
+
+				console.log('dataArray');
+				console.log(el);
+
+			captionItem.insert(new Element('div', {'class': 'left'}).update(new Element('img', {'src': 'https://graph.facebook.com/'+el.from.id+'/picture'})));
+			
+			if (el.message && el.message.length > 0 && el.name !== el.message) {
+				wrapper = new Element('div', {'class': 'wrapper left'})
+				// wrapper.insert(new Element('div', {'class': 'name'}).insert(el.message));
+				wrapper.insert(new Element('div', {'class': 'description'}).insert(el.message));
+				captionItem.insert(wrapper);
+			}
+			this.insert(captionItem);
+		}.bind(caption));
 		return this;
 	};
 	
@@ -385,20 +527,19 @@
 			this.listNode.update();
 		}
 		
-		// load updated list
-		list = this.data.sortBy(function(el){
-			return el.value.created.valueOf();
+		list = this.data.values().sortBy(function(el){
+			return el.created.valueOf();
 		});
 		
-		this.list = new DoublyLinkedList();
+		this.list = [];
 		
 		list.each(function(el) {
 			var isBlocked = false,
-				uid = el.value.uid,
+				uid = el.uid,
 				blocklist = this.blocklist.pluck('uid');
 
 			// don't non-music include if we're only doing music
-			if (this.config && this.config.type === 'onlyMusic' && !el.value.isMusic) {
+			if (this.config && this.config.type === 'onlyMusic' && !el.isMusic) {
 				return false;
 			}
 
@@ -416,34 +557,34 @@
 			}
 
 			// filter on group
-			if (this.config && this.config.type === 'group' && !el.value.group.pluck('uid').include(this.config.value)) {
+			if (this.config && this.config.type === 'group' && !el.group.pluck('uid').include(this.config.value)) {
 				return false;
 			}
 			
 			if (isBlocked === false) {
-				li = new Element('li', {'id': 'youtube_' + el.value.id});
+				li = new Element('li', {'id': 'youtube_' + el.id});
 				playlistItem = new Element('div', {'id': 'playlist-'+this.counter}).update(
-					new Element('a',{'href':'#','name': this.counter, 'class': 'track'}).update(el.value.data[0].name)
+					new Element('a',{'href':'#','name': this.counter, 'class': 'track'}).update(el.data[0].name)
 				);
 
-				el.value.data.each(function(el){
+				el.data.each(function(el){
 					this.insert(new Element('a', {'href':'#', 'class': 'label user', 'name': el.from.id}).update(el.from.name));
 					// @todo
 					this.insert(new Element('a', {'href': '#', 'class': 'hide hiddenPlaylistControl block', 'name': el.from.id}).update('x'));
 				}.bind(playlistItem));
 
-				if (el.value.group && el.value.group.length > 0) {
-					el.value.group.each(function(el, index){
+				if (el.group && el.group.length > 0) {
+					el.group.each(function(el, index){
 						this.insert(new Element('a', {'href':'#', 'class': 'label group', 'name': el.uid}).update(el.name));
 					}.bind(playlistItem));
 				}
 				
-				if (el.value.isMusic) {
+				if (el.isMusic) {
 					playlistItem.down('a').insert({before: new Element('span', {'class': 'music'}).update(new Element('a', {'href':'#'}).update('&#9835;'))});
 				}
 				
 				this.listNode.insert(li.insert(playlistItem));
-				this.list.add(el.value);
+				this.list.push(el);
 				this.counter++;
 			}
 			
@@ -454,12 +595,14 @@
 		this.listNode.show();
 		return this;
 	};
-	
+
+	/* PLAYER ---------------------------------------------------- */
+
 	FBP.prototype.play = function(){
-		$('status').update('Loaded ' + this.list.size() + ' videos');
+		$('status').update('Loaded ' + this.list.length + ' videos');
 		// Effect.SlideUp('status', {duration: 3.0});
 		swfobject.embedSWF(
-			'http://www.youtube.com/v/' + this.list.item(this.current).id + '&enablejsapi=1&playerapiid=player', 
+			'http://www.youtube.com/v/' + this.list[this.current].id + '&enablejsapi=1&playerapiid=player', 
 			'player', '300', '185', '8', null, null, 
 			{allowScriptAccess: 'always'},
 			{id: 'player'}
@@ -478,160 +621,19 @@
 	};
 	
 	FBP.prototype.seek = function(index) {
-		if (index >= 0 && index < this.list.size()) {
+		if (index >= 0 && index < this.list.length) {
 			console.log('seeking for ' + index + ' currently at ' + this.current);
 			$('playlist-'+this.current).removeClassName('playing');
 			$('playlist-'+index).addClassName('playing');
 			this.current = index;
-			this.player.loadVideoById(this.list.item(index).id);
+			console.log('seeking ('+index+') ('+this.list[index]+')')
+			this.player.loadVideoById(this.list[index].id);
 			this.player.playVideo();
 			this.updateCaption();
 		}
 		else {
 			console.log('outside of list');
 		}
-		return this;
-	};
-	
-	FBP.prototype.updateCaption = function() {
-		var dataArray = this.list.item(this.current).data,
-			caption = $('caption');
-		
-		caption.update(new Element('div', {'class': 'name'}).update(dataArray[0].name));
-		caption.insert(new Element('div', {'class': 'description'}).insert(dataArray[0].description));
-		
-		dataArray.each(function(el){
-			var captionItem = new Element('div', {'class': 'captionItem'}),
-				wrapper;
-
-				console.log('dataArray');
-				console.log(el);
-
-			captionItem.insert(new Element('div', {'class': 'left'}).update(new Element('img', {'src': 'https://graph.facebook.com/'+el.from.id+'/picture'})));
-			
-			if (el.message && el.message.length > 0 && el.name !== el.message) {
-				wrapper = new Element('div', {'class': 'wrapper left'})
-				// wrapper.insert(new Element('div', {'class': 'name'}).insert(el.message));
-				wrapper.insert(new Element('div', {'class': 'description'}).insert(el.message));
-				captionItem.insert(wrapper);
-			}
-			this.insert(captionItem);
-		}.bind(caption));
-		return this;
-	};
-	
-	FBP.prototype.updateHomeData = function() {
-		return this.updateData('/me/home?q=youtube.com&limit=50', 'homelist');
-	};
-
-	FBP.prototype.updateGroupData = function() {
-		this.groups.each(function(el){
-			this.updateData('/'+el.uid+'/feed?limit=50', 'grouplist-'+el.name, el);
-		}.bind(this));
-		return this;
-	};
-	
-	FBP.prototype.parseFBResponse = function(response) {
-		console.log('response data');
-		console.log(response);
-		
-		if (response.data && response.data.length > 0) {
-			var key;
-			this.that.offset = this.that.offset + 50;	// @todo
-			response.data.each(function(item, index) {
-				var created,date,time;
-				if (item.source && item.type === 'video' && item.source.indexOf('youtube') >= 0) {
-					// 2 patterns: 
-					// http://www.youtube.com/v/-hDl3tCuYf0&autoplay=1
-					// http://www.youtube.com/watch?v=-hDl3tCuYf0&NR=1
-					if (item.source.indexOf('/v/') >= 0) {
-						this.key = item.source.split('/')[4].split('&')[0];
-					}
-					else if (item.source.indexOf('v=') >= 0) {
-						this.key = item.source.split('v=')[1].split('&')[0];
-					}
-
-					if (this.data['youtube_'+this.key]) {
-						this.data['youtube_'+this.key]['data'].push(item);
-						this.data['youtube_'+this.key]['count'] = this.data['youtube_'+this.key]['data'].length;
-						if (!this.data['youtube_'+this.key]['uid'].include(item.from.id)) {
-							this.data['youtube_'+this.key]['uid'].push(item.from.id);
-						}
-					}
-					else {
-						created = item.created_time.split('T');
-						date = created[0].split('-');
-						time = created[1].substr(0,created[1].indexOf('+')).split(':');
-						
-						this.data['youtube_'+this.key] = {
-							type: 'youtube',
-							id: this.key,
-							uid: [item.from.id],
-							group: [],
-							created: new Date(),
-							count: 1,
-							data: [item]
-						};
-						this.data['youtube_'+this.key].created.setFullYear(parseInt(date[0],10), parseInt(date[1],10)-1, parseInt(date[2],10));
-						this.data['youtube_'+this.key].created.setHours(parseInt(time[0],10), parseInt(time[1],10), parseInt(time[2],10));
-					}
-					
-					if (this.group && !this.data['youtube_'+this.key]['group'].include(this.group)) {
-						this.data['youtube_'+this.key]['group'].push(this.group);
-					}
-					
-				}
-			}.bind({data: this.data, key: key, group: this.group}));
-			
-			this.that.appendData(this.data);
-			
-			if (response.paging && response.paging.previous) {
-				console.log(response.paging.previous);
-				console.log(this.that.offset);
-				if (this.that.offset <= 200) {
-					var q,limit, params,url;
-					console.log('still going');
-					
-					url    = response.paging.previous.substring(26,response.paging.previous.indexOf('?')) + '?';
-					params = response.paging.previous.toQueryParams();
-					
-					if (params.q) {
-						url = url + '&q=' + params.q;
-					}
-					if (params.limit) {
-						url = url + '&limit=' + params.limit;
-					}
-					
-					console.log('requesting ' + url + '&offset=' + this.that.offset);
-					
-					this.that.FB.api(url + '&offset=' + this.that.offset, this.that.parseFBResponse.bind({that: this.that, data: this.data, loadedEventName: this.loadedEventName+'1'}));
-				}
-				else {
-					document.fire('fbp:listloaded', {type: this.loadedEventName});
-				}
-				
-			}
-			else {
-				document.fire('fbp:listloaded', {type: this.loadedEventName});
-			}
-		}
-		else {
-			document.fire('fbp:listloaded', {type: this.loadedEventName});
-		}
-	};
-
-	FBP.prototype.updateData = function(url, loadedEventName, group) {
-		var data = {};
-		
-		console.log('requesting url ['+url+']');
-		
-		this.FB.api(url, this.parseFBResponse.bind({that: this, data: data, loadedEventName: loadedEventName, group: group}));
-		
-		return this;
-	};
-	
-	FBP.prototype.checkLoginStatus = function() {
-		this.FB.getLoginStatus(this.handleLogin.bind(this));
 		return this;
 	};
 	
@@ -642,6 +644,7 @@
 	var fbp = new FBP(config).init();
 	window.fbp = fbp;	//@todo: remove
 	
+	/* YOUTUBE GLOBAL DIRT ------------------------------------ */
 	window.youtubePlayerStateChange = function(state) {
 		if (state === 0) {
 			console.log('forwarding');
