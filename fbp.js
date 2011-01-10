@@ -86,6 +86,12 @@
 				this.groups.push(group);
 				
 				this.save('groups', this.groups);
+				
+				//dirty should be done with messaging
+				this.fetched.configGroups = false;
+				$('configGroups').hide();
+				$('hideConfigGroupsButton').hide();
+				$('showConfigGroupsButton').show();
 				this.updateGroupData();
 			}
 		}
@@ -103,6 +109,9 @@
 			this.groups.splice(index, 1);
 			this.save('groups', this.groups);
 			this.fetched.configGroups = false;
+			$('configGroups').hide();
+			$('hideConfigGroupsButton').hide();
+			$('showConfigGroupsButton').show();
 			this.updateGroupData();
 		}
 
@@ -398,18 +407,16 @@
 			
 			if (el.hasClassName('addGroup')) {
 				this.appendToGroups({uid: el.name, name: el.innerHTML});
-				$('refreshConfigGroupsButton').fire('click');
 			}
 			else if (el.hasClassName('removeGroup')) {
-				console.log('going to delete' + el.name);
 				this.removeFromGroups(el.name);
-				console.log(window.fbp.groups);
-				$('refreshConfigGroupsButton').fire('click');
 			}
 			else {
 				switch (el.id) {
 					case 'showConfigGroupsButton':
 						if (!this.fetched.configGroups) {
+							$('configSubscribedGroupsList').update();
+							$('configMyGroupsList').update();
 							this.groups.each(function(group) {
 								this.li = new Element('li').update(
 									new Element('a', {'href': '#', 'class': 'removeGroup', 'name': group.uid}).update(group.name)
@@ -430,8 +437,6 @@
 						$('configGroups').hide();
 						break;
 					case 'refreshConfigGroupsButton':
-						console.log('from refreshConfigGroupsButton');
-						console.log(window.fbp.groups);
 						$('configSubscribedGroupsList').update();
 						this.fetched.configGroups = false;
 						$('showConfigGroupsButton').fire('click');
