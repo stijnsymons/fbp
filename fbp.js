@@ -5,12 +5,6 @@
 		this.FB = config.FB;
 		this.loadState = [];
 		this.groups = [];
-		// this.groups = [
-		// 	{uid: 175011152513929, 'name': 'Klub Moustache'},
-		// 	{uid: 116486325080867, 'name': 'Radio Kapelle'},
-		// 	{uid: 116486325080865, 'name': 'unknown'}
-		// ];
-		this.groups =  [];
 		this.data = {};
 		this.player = config.player;
 		this.current = 0;
@@ -82,7 +76,6 @@
 		// set the observers for private events
 		document.observe('fbp:loggedin', function(){
 			console.log('fbp:loggedin caught');
-			// this.getStoredList();
 			$('status').update('Fetching feeds&hellip;');
 			this.updateHomeData();
 			this.updateGroupData();
@@ -91,10 +84,6 @@
 		document.observe('fbp:listloaded', function(evt){
 			console.log('fbp:listloaded caught ' + evt.memo.type);
 			this.handleListLoaded(evt.memo.type);
-		}.bind(this));
-		
-		document.observe('beforeunload', function(){
-			this.storeList();
 		}.bind(this));
 		
 		document.observe('fbp:loadingcomplete', function(){
@@ -109,9 +98,9 @@
 			this.requestIsMusic();
 		}.bind(this));
 		
-		document.observe('onbeforeunload', function(){
-			this.save('groups', this.groups);
-		}.bind(this));
+		// document.observe('onbeforeunload', function(){
+		// 	this.save('groups', this.groups);
+		// }.bind(this));
 		
 		// check the state >> through private events
 		this.FB.init({apiKey: this.apiKey});
@@ -170,35 +159,6 @@
 		this.data = $H(this.data).merge(data);
 		return this;
 	}
-	
-	FBP.prototype.getStoredList = function() {
-		var value;
-		if (this.hasLocalStorage()) {
-			value = localStorage.getItem('fbp.'+this.user+'.list');
-			if (value !== null) {
-				this.appendList(value.evalJSON());
-				return true;
-			}
-		}
-		document.fire('fbp:listloaded', {type: 'storedlist'});
-		return false;
-	};
-	
-	FBP.prototype.storeList = function() {
-		if (this.hasLocalStorage()) {
-			return localStorage.setItem('fbp.'+this.user+'.list', this.list.toJSON());
-		}
-		return false;
-	};
-	
-	// from: http://diveintohtml5.com/storage.html
-	FBP.prototype.hasLocalStorage = function() {
-		try {
-			return 'localStorage' in window && window['localStorage'] !== null;
-		} catch (e) {
-			return false;
-		}
-	};
 	
 	FBP.prototype.handleLogin = function(response) {
 		var FB = this.FB;
@@ -497,6 +457,7 @@
 	
 	FBP.prototype.play = function(){
 		$('status').update('Loaded ' + this.list.size() + ' videos');
+		// Effect.SlideUp('status', {duration: 3.0});
 		swfobject.embedSWF(
 			'http://www.youtube.com/v/' + this.list.item(this.current).id + '&enablejsapi=1&playerapiid=player', 
 			'player', '300', '185', '8', null, null, 
