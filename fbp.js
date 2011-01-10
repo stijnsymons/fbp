@@ -125,9 +125,12 @@
 
 		if (!response.session) {
 			//no session, set login button
-			$('header').update(new Element('a', {'href': '#', 'class': 'nav right'}).update('Login').observe('click', function(){
-				this.FB.login(this.handleLogin.bind(this), {perms:'read_stream,user_groups'});
-			}.bind(this)));
+			$('status').update('Please log in');
+			$('header').update(
+				new Element('a', {'href': '#', 'class': 'nav right'}).update('Login').observe('click', function(){
+					this.FB.login(this.handleLogin.bind(this), {perms:'read_stream,user_groups'});
+				}.bind(this))
+			);
 
 			return this;
 		}
@@ -145,8 +148,9 @@
 			header.update(new Element('img', {'src': 'https://graph.facebook.com/'+response.id+'/picture', 'class': 'left'}));
 			header.insert(new Element('span', {'class': 'nav left'}).update(response.name));
 			header.insert(new Element('a', {'href': '#', 'class': 'nav right'}).update('Logout').observe('click', function(){
-				this.FB.logout();
-				window.location.reload();
+				this.FB.logout(function(){
+					window.location.reload();
+				});
 			}.bind(this)));
 			document.fire('fbp:loggedin');
 		}.bind(this));
