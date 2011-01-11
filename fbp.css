@@ -11,9 +11,19 @@ ul, li {
 	margin: 0px;
 	padding: 0px;
 }
-.clearfix {
+.clearfix:after {
+	content: ".";
 	display: block;
+	height: 0;
+	clear: both;
+	visibility: hidden;
 	}
+	
+.clearBoth,
+.clear {
+	clear: both !important;
+	}
+
 .left {
 	float:left;
 	}
@@ -28,17 +38,6 @@ ul, li {
 	width: 670px;
 }
 
-.show {
-	}
-	.show:hover {
-		display:none;
-		}
-.hide {
-	display:none;
-	}
-	.hide:hover {
-		display: block;
-		}
 
 
 /**
@@ -152,6 +151,36 @@ ul, li {
 	#list .label.group {
 		background: none repeat scroll 0 0 gray;
 	}
+	#list .label .hidden {
+		visibility: hidden;
+		display: none;
+		margin-left: 5px;
+		color: white;
+		background-color: red;
+		padding: 0px 3px;
+		}
+		#list .label:hover .hidden {
+			visibility: visible;
+			display: inline;
+		}
+		
+
+
+/*
+	.show {
+		}
+		.show:hover {
+			display:none;
+			}
+	.hide {
+		display:none;
+		}
+		.hide:hover {
+			display: block;
+			}
+*/
+
+
 
 #list .music a {
 	display:block;

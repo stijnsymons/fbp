@@ -1,20 +1,18 @@
 (function(config, window, undefined){
 
 	var FBP = function(config) {
-		this.apiKey = config.apiKey;
-		this.FB = config.FB;
+		this.apiKey    = config.apiKey;
+		this.FB        = config.FB;
+		this.player    = config.player;
+		this.data      = null;
 		this.loadState = [];
-		this.groups = [];
-		this.data = {};
-		this.player = config.player;
-		this.current = 0;
-		this.blocklist = [
-			{uid:582789594, nick:'Bart Becks'},		// block bb
-			{uid:123, nick: 'bla'}];				// testing for booboo's
-			
-		this.offset = 0;
-		this.fetched = {
-			configGroups: false
+		this.groups    = [];
+		this.blocklist = [];
+		this.current   = 0;
+		this.offset    = 0;
+		this.fetched   = {
+			configGroups: false,
+			configBlocklist: false
 		};
 		return this;
 	};
@@ -26,6 +24,9 @@
 		document.observe('fbp:loggedin', function(){
 			console.log('fbp:loggedin caught');
 			$('status').update('Fetching feeds&hellip;');
+			
+			// this.data = this.load('data');
+			// this.since = this.load('since');
 			this.updateHomeData();
 			this.updateGroupData();
 		}.bind(this));
@@ -46,6 +47,11 @@
 			// check if it's music or not
 			this.requestIsMusic();
 		}.bind(this));
+		
+		// window.onbeforeunload = function(){
+		// 	alert('going away, saving your shit');
+		// 	this.save('data', this.data);
+		// }.bind(this);
 		
 		// check the state >> through private events
 		this.FB.init({apiKey: this.apiKey});
@@ -73,10 +79,28 @@
 	/* CONFIG ---------------------------------------------------- */
 	
 	FBP.prototype.appendToBlocklist = function(uid, nick) {
+		if (!this.blocklist.pluck('uid').include(uid)) {
+			this.blocklist.push({uid: uid, nick: nick});
+			this.save('blocklist', this.blocklist);
+
+			this.updateInterfaceList();
+		}
 		return this;
 	};
 	
 	FBP.prototype.removeFromBlocklist = function(uid) {
+		var blocklistUids = this.blocklist.pluck('uid'),
+			index;
+
+		index = blocklistUids.indexOf(uid);
+
+		if (index >= 0) {
+			this.blocklist.splice(index, 1);
+			this.save('blocklist', this.blocklist);
+			
+			this.updateInterfaceList();
+		}
+
 		return this;
 	};
 
@@ -144,6 +168,9 @@
 
 			// load the saved groups
 			this.groups = this.load('groups') || [];
+			
+			// load the blocked users
+			this.blocklist = this.load('blocklist') || [];
 
 			header.update(new Element('img', {'src': 'https://graph.facebook.com/'+response.id+'/picture', 'class': 'left'}));
 			header.insert(new Element('span', {'class': 'nav left'}).update(response.name));
@@ -415,6 +442,9 @@
 			else if (el.hasClassName('removeGroup')) {
 				this.removeFromGroups(el.name);
 			}
+			else if (el.hasClassName('removeBlocked')) {
+				this.removeFromBlocklist(el.name);
+			}
 			else {
 				switch (el.id) {
 					case 'showConfigGroupsButton':
@@ -444,6 +474,26 @@
 						$('configSubscribedGroupsList').update();
 						this.fetched.configGroups = false;
 						$('showConfigGroupsButton').fire('click');
+						break;
+					case 'showConfigBlocklistButton':
+						if (!this.fetched.configBlocklist) {
+							$('configBlocklistList').update();
+							this.blocklist.each(function(user) {
+								this.li = new Element('li').update(
+									new Element('a', {'href': '#', 'class': 'removeBlocked', 'name': user.uid}).update(user.nick)
+								);
+								this.ul.insert(this.li);
+							}.bind({ul:$('configBlocklistList'), li:li}));
+
+							this.fetched.configBlocklist = true;
+						}
+						$('showConfigBlocklistButton').hide();
+						$('hideConfigBlocklistButton').show();
+						$('configBlocklist').show();
+						break;
+					case 'hideConfigBlocklistButton':
+						$('hideConfigBlocklistButton').hide();
+						$('showConfigBlocklistButton').show();
 						break;
 				}
 			}
@@ -501,9 +551,10 @@
 								}.bind(this)));
 						}
 					}
-					// else if (el.hasClassName('block')) {
-					// 	this.appendToBlocklist
-					// }
+					else if (el.hasClassName('block')) {
+						console.log('blocking user ' + el.name + ' -- ' + el.previous().innerHTML);
+						this.appendToBlocklist(el.name, el.previous().innerHTML);
+					}
 					else if (el.hasClassName('group')) {
 						console.log('loading for group ' + el.name);
 						this.updateInterfaceList({type: 'group', 'value': el.name});
@@ -577,9 +628,10 @@
 				);
 
 				el.data.each(function(el){
-					this.insert(new Element('a', {'href':'#', 'class': 'label user', 'name': el.from.id}).update(el.from.name));
-					// @todo
-					this.insert(new Element('a', {'href': '#', 'class': 'hide hiddenPlaylistControl block', 'name': el.from.id}).update('x'));
+					this.insert(new Element('span', {'class': 'label', 'name': el.from.id}).update(
+							new Element('a', {'href': '#', 'class': 'user', 'name': el.from.id}).update(el.from.name)
+						).insert(new Element('a', {'href': '#', 'class': 'hidden block', 'name': el.from.id}).update('x'))
+					);
 				}.bind(playlistItem));
 
 				if (el.group && el.group.length > 0) {
@@ -632,7 +684,9 @@
 	FBP.prototype.seek = function(index) {
 		if (index >= 0 && index < this.list.length) {
 			console.log('seeking for ' + index + ' currently at ' + this.current);
-			$('playlist-'+this.current).removeClassName('playing');
+			if ($('playlist-'+this.current)) {
+				$('playlist-'+this.current).removeClassName('playing');
+			}
 			$('playlist-'+index).addClassName('playing');
 			this.current = index;
 			console.log('seeking ('+index+') ('+this.list[index]+')')
