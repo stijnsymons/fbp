@@ -1,6 +1,22 @@
 (function(config, window, undefined){
 
 	var FBP = function(config) {
+		
+		/*
+		
+		soundcloud.addEventListener('onPlayerReady', function(player, data) {
+			player.api_play();
+		});
+
+		<object height="81" width="100%" id="yourPlayerId" classid="clsid:D27CDB6E-AE6D-11cf-96B8-444553540000">
+			<param name="movie" value="http://player.soundcloud.com/player.swf?url=http%3A%2F%2Fsoundcloud.com%2Fmatas%2Fhobnotropic&enable_api=true&object_id=yourPlayerId"></param>
+			<param name="allowscriptaccess" value="always"></param>
+			<embed allowscriptaccess="always" height="81" src="http://player.soundcloud.com/player.swf?url=http%3A%2F%2Fsoundcloud.com%2Fmatas%2Fhobnotropic&enable_api=true&object_id=yourPlayerId" type="application/x-shockwave-flash" width="100%" name="yourPlayerId"></embed>
+		</object>
+
+		
+		*/
+		
 		this.apiKey    = config.apiKey;
 		this.FB        = config.FB;
 		this.player    = config.player;
@@ -27,7 +43,8 @@
 			
 			// this.data = this.load('data');
 			// this.since = this.load('since');
-			this.updateHomeData();
+			this.updateHomeData('youtube.com');
+			this.updateHomeData('soundcloud.com');
 			this.updateGroupData();
 		}.bind(this));
 		
@@ -47,6 +64,12 @@
 			// check if it's music or not
 			this.requestIsMusic();
 		}.bind(this));
+
+		soundcloud.addEventListener('onPlayerReady', function(player, data) {
+			player.api_play();
+		});
+
+
 		
 		// window.onbeforeunload = function(){
 		// 	alert('going away, saving your shit');
@@ -188,9 +211,10 @@
 	FBP.prototype.handleListLoaded = function(type) {
 		if (this.loadState.indexOf(type) < 0) {
 			this.loadState.push(type);
-			
-			if (this.loadState.length >= this.groups.length + 1) {
+			console.log('-----'+this.loadState.length+'----------'+this.groups.length+'---------------')
+			if (this.loadState.length >= this.groups.length + 2) {
 				// fire event to trigger that all loading is done
+				console.log('--------------------- tis op');
 				document.fire('fbp:loadingcomplete');
 			}
 		}
@@ -212,7 +236,9 @@
 			document.getElementsByTagName('head')[0].appendChild(script);
 		} else {
 			this.data.each(function(el){
-				this.requestIsMusic(el.value.id);
+				if (el.value.type=="youtube") {
+					this.requestIsMusic(el.value.id);
+				}
 			}.bind(this));
 		}
 		return this;
@@ -254,8 +280,8 @@
 		return this;
 	}
 	
-	FBP.prototype.updateHomeData = function() {
-		return this.updateData('/me/home?q=youtube.com&limit=50', 'homelist');
+	FBP.prototype.updateHomeData = function(site) {
+		return this.updateData('/me/home?q='+site+'&limit=50', 'homelist');
 	};
 
 	FBP.prototype.updateGroupData = function() {
@@ -278,7 +304,7 @@
 			var key, data = {};
 			this.that.offset = this.that.offset + 50;	// @todo
 			response.data.each(function(item, index) {
-				var created,date,time;
+				var created,date,time,key,end;
 				if (item.source && item.type === 'video' && item.source.indexOf('youtube') >= 0) {
 					// 2 patterns: 
 					// http://www.youtube.com/v/-hDl3tCuYf0&autoplay=1
@@ -317,6 +343,48 @@
 					
 					if (this.group && !this.data['youtube_'+this.key]['group'].include(this.group)) {
 						this.data['youtube_'+this.key]['group'].push(this.group);
+					}
+					
+				}
+				else if (item.source && item.type === 'video' && item.source.indexOf('soundcloud') >= 0) {
+					// 2 patterns: 
+					// http://www.youtube.com/v/-hDl3tCuYf0&autoplay=1
+					// http://www.youtube.com/watch?v=-hDl3tCuYf0&NR=1
+
+					end = item.link.indexOf('?');
+					if (end < 0) {
+						end = item.link.length;
+					}
+					this.key = item.link.slice(22, end).gsub('/', '%2F');
+
+					if (this.data['soundcloud_'+this.key]) {
+						this.data['soundcloud_'+this.key]['data'].push(item);
+						this.data['soundcloud_'+this.key]['count'] = this.data['youtube_'+this.key]['data'].length;
+						if (!this.data['soundcloud_'+this.key]['uid'].include(item.from.id)) {
+							this.data['soundcloud_'+this.key]['uid'].push(item.from.id);
+						}
+					}
+					else {
+						created = item.created_time.split('T');
+						date = created[0].split('-');
+						time = created[1].substr(0,created[1].indexOf('+')).split(':');
+						
+						this.data['soundcloud_'+this.key] = {
+							type: 'soundcloud',
+							id: this.key.gsub('%2F','/'),
+							uid: [item.from.id],
+							isMusic: true,
+							group: [],
+							created: new Date(),
+							count: 1,
+							data: [item]
+						};
+						this.data['soundcloud_'+this.key].created.setFullYear(parseInt(date[0],10), parseInt(date[1],10)-1, parseInt(date[2],10));
+						this.data['soundcloud_'+this.key].created.setHours(parseInt(time[0],10), parseInt(time[1],10), parseInt(time[2],10));
+					}
+					
+					if (this.group && !this.data['soundcloud_'+this.key]['group'].include(this.group)) {
+						this.data['soundcloud_'+this.key]['group'].push(this.group);
 					}
 					
 				}
@@ -596,7 +664,8 @@
 		list.each(function(el) {
 			var isBlocked = false,
 				uid = el.uid,
-				blocklist = this.blocklist.pluck('uid');
+				blocklist = this.blocklist.pluck('uid'),
+				prefix = el.type;
 
 			// don't non-music include if we're only doing music
 			if (this.config && this.config.type === 'onlyMusic' && !el.isMusic) {
@@ -622,7 +691,7 @@
 			}
 			
 			if (isBlocked === false) {
-				li = new Element('li', {'id': 'youtube_' + el.id});
+				li = new Element('li', {'id': prefix+'_' + el.id});
 				playlistItem = new Element('div', {'id': 'playlist-'+this.counter}).update(
 					new Element('a',{'href':'#','name': this.counter, 'class': 'track'}).update(el.data[0].name)
 				);
@@ -661,13 +730,25 @@
 
 	FBP.prototype.play = function(){
 		$('status').update('Loaded ' + this.list.length + ' videos');
-		// Effect.SlideUp('status', {duration: 3.0});
-		swfobject.embedSWF(
-			'http://www.youtube.com/v/' + this.list[this.current].id + '&enablejsapi=1&playerapiid=player', 
-			'player', '300', '185', '8', null, null, 
-			{allowScriptAccess: 'always'},
-			{id: 'player'}
+		Effect.SlideUp('status', {duration: 3.0});
+		// swfobject.embedSWF(
+		// 	'http://www.youtube.com/v/' + this.list[this.current].id + '&enablejsapi=1&playerapiid=youtubePlayer',
+		// 	'youtubePlayer', '300', '185', '8', null, null, 
+		// 	{allowScriptAccess: 'always'},
+		// 	{id: 'youtubePlayer'}
+		// );
+
+		var flashvars = {
+			enable_api: true, 
+			object_id: "myPlayer", 
+			url: "http://soundcloud.com/a-trak/robyn-indestructible-a-trak-remix"
+		};
+
+		swfobject.embedSWF("http://player.soundcloud.com/player.swf", 
+			"myContent", "81", "100%", "9.0.0","expressInstall.swf", flashvars, {allowscriptaccess: "always"}, 
+			{id: "soundcloudPlayer", name: "soundcloudPlayer"}
 		);
+
 		
 		this.updateCaption();
 		return this;
