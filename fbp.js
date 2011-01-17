@@ -469,9 +469,9 @@
 				case 'startButton':
 					this.player.playVideo();
 					el.hide();
-					$('pauzeButton').show();
+					$('pauseButton').show();
 					break;
-				case 'pauzeButton':
+				case 'pauseButton':
 					this.player.pauseVideo();
 					el.hide();
 					$('startButton').show();
