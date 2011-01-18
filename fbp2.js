@@ -140,12 +140,13 @@
 			this.setControls();
 			this.playerMeta = {};
 			$(document).observe('fbp.ui:playerEvent', this.handlePlayerEvents.bind(this));
+			$(document).observe('fbp.ui:playlistEvent', this.handlePlaylistEvents.bind(this));
 		},
 		setCaption: function() {
 			
 		},
-		hidePlayers: function(wrapper) {
-			$(wrapper).childElements().each(function(el) {
+		hidePlayers: function() {
+			$('players').childElements().each(function(el) {
 				if (!this.playerMeta[el.id]) this.playerMeta[el.id] = {};
 				this.playerMeta[el.id]['height'] = el.height;
 				el.setStyle({'visibility': 'hidden', 'height': '0'});
@@ -153,10 +154,9 @@
 			
 			return this;
 		},
-		showPlayers: function(wrapper) {
-			$(wrapper).childElements().each(function(el) {
-				el.setStyle({'visibility': 'visible', 'height': this.playerMeta[el.id]['height']+'px'});
-			}.bind(this));
+		showPlayer: function(provider) {
+			this.hidePlayers();
+			$(provider+'Player').setStyle({'visibility': 'visible', 'height': this.playerMeta[provider+'Player']['height']+'px'});
 			
 			return this;
 		},
@@ -174,7 +174,7 @@
 					case 'nsfw':
 						el.hide();
 						$('sfwButton').show();
-						this.showPlayers('players');
+						this.showCurrentPlayer('players');
 						break;
 					case 'play':
 						el.hide();
@@ -193,6 +193,21 @@
 			controls.show();
 
 			return this;
+		},
+		handlePlaylistEvents: function(evt) {
+			switch(evt.memo.event) {
+				case 'move':
+					if (evt.memo.last) {
+						evt.memo.last.removeClassName('playing');
+					}
+					if (evt.memo.track) {
+						evt.memo.track.addClassName('playing');
+					}
+					
+					this.showPlayer(Helper.getDataAttribute(evt.memo.track, 'provider'));
+					
+					break;
+			}
 		},
 		handlePlayerEvents: function(evt) {
 			var event = evt.memo.event,
@@ -504,13 +519,9 @@
 		previous: function() {
 			var previous = false;
 			
-			console.log('previous entered');
-			console.log(this.current);
-			
 			if (this.current) {
 				previous  = this.current.previous();
 				this.last = this.current;
-				this.last.removeClassName('playing');
 			}
 			
 			if (previous) {
@@ -518,6 +529,8 @@
 				this.current.addClassName('playing');
 				this.play(this.current);
 			}
+
+			$(document).fire('fbp.ui:playlistEvent', {'event': 'move', track: this.current, last: this.last});
 
 			return this;
 		},
@@ -527,15 +540,15 @@
 			if (this.current) {
 				next = this.current.next();
 				this.last = this.current;
-				this.last.removeClassName('playing');
 			}
 			
 			if (next) {
 				this.current = next;
-				this.current.addClassName('playing');
 				this.play(this.current);
 			}
 			
+			$(document).fire('fbp.ui:playlistEvent', {'event': 'move', track: this.current, last: this.last});
+
 			return this;
 		},
 		render: function() {
@@ -558,10 +571,10 @@
 			if (el.hasClassName('track')) {
 				if (this.last) {
 					this.last = this.current;
-					this.last.removeClassName('playing');
 				}
 				this.current = el.up('li');
-				this.current.addClassName('playing');
+				
+				$(document).fire('fbp.ui:playlistEvent', {'event': 'move', track: this.current, last: this.last});
 
 				this.play(this.current);
 			}
@@ -580,6 +593,7 @@
 			console.log('handleControlEvents ['+action+']');
 			
 			if (['play','previous','forward','pause'].include(action)) {
+				$(document).fire('fbp.ui:playlistEvent', {'event': 'move', track: this.current, last: null});
 				return this[action]();
 			}
 			
