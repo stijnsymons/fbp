@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="content-type" content="text/html; charset=utf-8">
+		<title>fbp</title>
+		<link rel="stylesheet" href="fbp.css">
+	</head>
+
+	<body>
+		<div id="bar"></div>
+
+		<div id="content">
+
+			<div id="header"></div>
+			
+			<div id="status">Logging in&hellip;</div>
+
+			<div id="playersWrapper">
+				<div id="players">
+					<div id="youtubePlayer"></div>
+					<div id="soundcloudPlayer"></div>
+					<li id="vimeoPlayer"></li>
+				</div>
+			</div>
+
+			<ul id="controls" style="display:none;">
+				<li><a class="button" id="previousButton" data-control="previous">|&lt;&lt;</a></li>
+				<li><a class="button" id="playButton" data-control="play">&gt;</a></li>
+				<li><a class="button" id="pauseButton" data-control="pause" style="display:none;">||</a></li>
+				<li><a class="button" id="forwardButton" data-control="forward">&gt;&gt;|</a></li>
+				<li><a class="button red" id="sfwButton" data-control="sfw">SFW</a></li>
+				<li><a class="button red" id="nsfwButton" data-control="nsfw" style="display:none;">NSFW</a></li>
+			</ul>
+			
+			<div id="playlistWrapper">
+				<ul id="playlist"></ul>
+			</div>
+
+			<div id="footer" class="clearfix"></div>
+		</div>
+
+		<div id="fb-root"></div>
+
+		<script src="http://ajax.googleapis.com/ajax/libs/prototype/1.7.0.0/prototype.js"></script>
+		<script src="https://ajax.googleapis.com/ajax/libs/scriptaculous/1.8.3/effects.js"></script>
+		<script src="http://ajax.googleapis.com/ajax/libs/swfobject/2.2/swfobject.js"></script>
+		<script src="http://connect.facebook.net/en_US/all.js"></script>
+		<script src="soundcloud.player.api.js"></script>
+		<script src="http://github.com/vimeo/froogaloop/raw/master/froogaloop.min.js"></script>
+		<script src="fbp2.js"></script>
+	</body>
+</html>
